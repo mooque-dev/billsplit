@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design System</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+body{padding:24px 16px 80px}
+main{max-width:760px;margin:0 auto}
+h1{font-size:1.8rem;margin:0 0 .25rem;letter-spacing:-.02em}
+h2{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin:2rem 0 .75rem}
+.demo{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.6rem}
+.sw div{border:1px solid hsl(var(--border));border-radius:.6rem;overflow:hidden;font-size:.72rem}
+.sw i{display:block;height:2.4rem}
+.sw span{display:block;padding:.35rem .5rem;font-family:ui-monospace,Menlo,monospace}
+ol li{margin:.3rem 0}
+</style>
+</head>
+<body><main>
+<h1>Yuwol Split · Design System</h1>
+<p class="muted">shadcn/ui-compatible tokens and components in plain CSS (<code>ds.css</code>). Same token names and <code>data-state</code> conventions as shadcn, so the React + Tailwind port is a direct swap. Light/dark follow the OS.</p>
+
+<h2>Rules</h2>
+<ol>
+  <li>Never hard-code colors — always <code>hsl(var(--token))</code>.</li>
+  <li>Build screens from the components below. App layout may only use tokens + these components.</li>
+  <li>State lives in <code>data-state</code> (on/off/active/paid); color intent in <code>data-tone</code>.</li>
+  <li>Touch targets ≥ 2rem (dense) or 2.5rem (default). Keep focus rings visible. Everything reachable by keyboard.</li>
+  <li>New component? Add it to <code>ds.css</code> and to this page first, then use it.</li>
+</ol>
+
+<h2>Color tokens</h2>
+<div class="sw" id="sw"></div>
+
+<h2>Button</h2>
+<div class="demo">
+  <button class="btn">Default</button><button class="btn btn-secondary">Secondary</button><button class="btn btn-outline">Outline</button>
+  <button class="btn btn-ghost">Ghost</button><button class="btn btn-destructive">Destructive</button><button class="btn btn-destructive-ghost">Destructive ghost</button>
+</div>
+<div class="demo" style="margin-top:.6rem"><button class="btn btn-sm">Small</button><button class="btn btn-lg">Large</button><button class="btn btn-outline btn-icon">⌨</button><button class="btn btn-outline btn-icon btn-sm">⋯</button><button class="btn" disabled>Disabled</button></div>
+
+<h2>Input · Input group · Select · Textarea</h2>
+<div class="demo" style="align-items:flex-start">
+  <input class="input" style="max-width:200px" placeholder="Input">
+  <div class="input-group" style="max-width:150px"><span>$</span><input placeholder="0.00"></div>
+  <select class="select" style="max-width:160px"><option>Select</option></select>
+  <input class="input input-ghost" style="max-width:160px" value="Ghost (inline edit)">
+</div>
+<textarea class="textarea" style="margin-top:.6rem" placeholder="Textarea"></textarea>
+
+<h2>Tabs</h2>
+<div class="tabs-list" style="max-width:420px"><button class="tabs-trigger" data-state="active">All</button><button class="tabs-trigger">Table 1 <span class="count">8</span></button><button class="tabs-trigger">Table 2 <span class="count">12</span></button><button class="tabs-trigger" data-variant="add">+ Add table</button></div>
+
+<h2>Toggle · ToggleGroup (domain tones)</h2>
+<div class="demo">
+  <div class="toggle-group"><button class="toggle" data-tone="food" data-state="on">Food</button><button class="toggle" data-tone="beer" data-state="on">Beer</button><button class="toggle" data-tone="soju" data-state="off">Soju</button></div>
+  <div class="toggle-group"><button class="toggle" data-state="on">All</button><button class="toggle" data-state="off">Unpaid</button></div>
+</div>
+
+<h2>Badge · Alert · Progress · Kbd</h2>
+<div class="demo"><span class="badge">Default</span><span class="badge badge-success">Paid</span><span class="badge badge-warning">+$2.00</span><span class="badge badge-outline">🔗</span>
+  <span class="kbd">⌘</span><span class="kbd">K</span><span class="kbd">Enter</span></div>
+<div class="alert alert-warning" style="margin-top:.6rem">Table 1 · Beer: no one is marked — that amount isn't split.</div>
+<div class="progress" style="margin-top:.8rem"><i style="width:60%"></i></div>
+
+<h2>Card</h2>
+<div class="card" style="max-width:380px"><div class="card-header"><h3 class="card-title">Card title</h3></div><div class="card-content">Content goes here.</div><div class="card-footer"><button class="btn btn-sm">Action</button></div></div>
+
+<h2>Dialog · Command</h2>
+<div class="demo"><button class="btn btn-outline" id="od">Open dialog</button><button class="btn btn-outline" id="oc">Open command</button></div>
+<dialog class="dialog" id="d"><h3 class="dialog-title">Dialog title</h3><p class="dialog-desc">Description text.</p><div class="dialog-footer"><button class="btn btn-outline" onclick="d.close()">Cancel</button><button class="btn" onclick="d.close()">Confirm</button></div></dialog>
+<dialog class="dialog" id="c" style="padding:.75rem"><input class="command-input" placeholder="Find a person or run an action…"><div class="command-list"><div class="command-group">People</div>
+  <div class="command-item" data-selected="true"><span>○</span><span>Jisoo Park</span><span class="sub">Table 1 · $42.19</span></div><div class="command-item"><span>✓</span><span>Minho Lee</span><span class="sub">Table 1 · $62.53</span></div></div></dialog>
+
+<script>
+const sw=document.getElementById('sw');
+['background','foreground','card','primary','secondary','muted','accent','border','input','ring','destructive','food','beer','soju','success','warning'].forEach(n=>{
+  sw.insertAdjacentHTML('beforeend',`<div><i style="background:hsl(var(--${n}))"></i><span>--${n}</span></div>`);});
+document.querySelectorAll('dialog').forEach(x=>{let dn=false;const out=e=>{const r=x.getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom};
+  x.addEventListener('mousedown',e=>{dn=e.target===x&&out(e)});x.addEventListener('click',e=>{if(dn&&e.target===x&&out(e))x.close();dn=false});});
+od.onclick=()=>d.showModal(); oc.onclick=()=>c.showModal();
+</script>
+</main></body></html>

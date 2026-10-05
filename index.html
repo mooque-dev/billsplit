@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Split the Bill</title>
+<link rel="stylesheet" href="ds.css">
+<style>
+/* App layer — tokens + ds.css components only (see ds.css rules) */
+body{padding:16px 16px 150px}
+main{max-width:640px;margin:0 auto}
+h1{font-size:1.65rem;margin:.5rem 0 .15rem;letter-spacing:-.02em}
+.top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.top .acts{display:flex;gap:.4rem}
+.sub{color:hsl(var(--muted-foreground));margin:0 0 1rem;font-size:.875rem}
+.stack>*+*{margin-top:.9rem}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.75rem}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.5rem}
+.toolbar{display:flex;gap:.5rem;align-items:center;margin:.9rem 0;flex-wrap:wrap}
+.toolbar .input{flex:1;min-width:150px;border-radius:999px;background:hsl(var(--card))}
+.tabbar{position:sticky;top:0;z-index:4;padding:.25rem 0 .75rem;background:hsl(var(--background))}
+
+/* table card */
+.tcard{margin-bottom:.9rem;overflow:hidden}
+.trow{display:flex;align-items:center;gap:.4rem}
+.tname{flex:1;min-width:0;font-size:1.15rem;height:2.25rem}
+.ttot{font-weight:700;font-variant-numeric:tabular-nums}
+.tmeta{display:flex;gap:.7rem;flex-wrap:wrap;font-size:.75rem;color:hsl(var(--muted-foreground));margin:.1rem 0 .5rem}
+.amt{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin-top:.7rem}
+.amt .label{display:flex;align-items:center;gap:.3rem}
+.dot{width:.55rem;height:.55rem;border-radius:50%;display:inline-block}
+.per{font-size:.72rem;color:hsl(var(--muted-foreground));margin-top:.3rem;min-height:1rem}
+.bulk{display:flex;gap:.35rem;align-items:center;font-size:.8rem;color:hsl(var(--muted-foreground));flex-wrap:wrap;margin-top:.75rem}
+.ppl{margin-top:.4rem}
+.tfoot{padding:.75rem 1rem 1rem;border-top:1px solid hsl(var(--border))}
+.tfoot .r{display:flex;gap:.5rem}
+.qhint{font-size:.72rem;color:hsl(var(--muted-foreground));margin-top:.4rem}
+
+/* person row */
+.prow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"pay name owe more" ". tg tg tg";align-items:center;gap:.35rem .5rem;padding:.55rem 0;border-top:1px solid hsl(var(--border))}
+.prow:first-child{border-top:0}
+.dense .prow{grid-template-columns:auto minmax(0,1fr) auto auto auto;grid-template-areas:"pay name tg owe more";gap:.3rem .4rem;padding:.35rem 0}
+.prow.hide{display:none}
+.pay{grid-area:pay;width:1.9rem;height:1.9rem;border-radius:50%;border:2px solid hsl(var(--input));background:transparent;color:transparent;display:grid;place-items:center;padding:0;cursor:pointer}
+.prow[data-state=paid] .pay{background:hsl(var(--success));border-color:hsl(var(--success));color:#fff}
+.ncell{grid-area:name;min-width:0}
+.ncell .input{height:2rem;font-size:1rem}
+.stat{display:flex;gap:.3rem;align-items:center;padding-left:.25rem;min-height:0}
+.stat:empty{display:none}
+.tg{grid-area:tg}
+.owe{grid-area:owe;font-weight:700;font-variant-numeric:tabular-nums;font-size:1.05rem;text-align:right;min-width:4.6rem}
+.dense .owe{font-size:.95rem;min-width:4.4rem}
+.prow[data-state=paid] .owe{color:hsl(var(--success))}
+.more{grid-area:more}
+.long{display:inline}.short{display:none}
+.dense .long{display:none}.dense .short{display:inline}
+.dense .toggle{min-width:1.8rem;padding:0 .4rem}
+.det{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.6rem;margin:.4rem 0 .2rem 2.4rem}
+.det .full{grid-column:1/-1}
+@media(max-width:440px){
+  .dense .toggle{min-width:1.55rem;height:1.8rem;padding:0 .2rem}
+  .dense .toggle-group{gap:.15rem}.dense .prow{gap:.2rem}
+  .dense .owe{font-size:.88rem;min-width:3.7rem}.dense .pay{width:1.7rem;height:1.7rem}
+  #cmdKbd{display:none}.bar .tot b{font-size:1.05rem}
+}
+.rhead{display:flex;align-items:center;gap:.5rem;margin:1rem 0 .4rem}
+.rhead b{font-size:.9rem}.rhead .muted{font-size:.75rem}.rhead .btn{margin-left:auto}
+.rchips{display:flex;flex-wrap:wrap;gap:.35rem}
+.rchip{display:inline-flex;align-items:center;gap:.3rem;height:2.1rem;padding:0 .7rem}
+.rchip small{font-size:.65rem;font-weight:700;opacity:.75;border:1px solid currentColor;border-radius:999px;padding:0 .3rem}
+.rchip:disabled{opacity:.45;cursor:default}
+.rchip.edit{border:1px solid hsl(var(--input));border-radius:calc(var(--radius) - 3px);font-size:.85rem;font-weight:500;padding:0 .2rem 0 .7rem}
+.rchip.edit button{border:0;background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;font-size:1.05rem;padding:0 .4rem;height:100%}
+.rchip.edit button:hover{color:hsl(var(--destructive))}
+.rbody{overflow:auto;max-height:52vh;padding-right:.2rem}
+.radd{margin-top:.5rem;max-width:260px}
+.tfoot .r{flex-wrap:wrap}.tfoot .r .input{flex:1 1 150px}
+.flash{animation:flash 1.4s}
+@keyframes flash{0%,40%{background:hsl(var(--warning-soft))}100%{background:transparent}}
+
+/* breakdown */
+.sum{display:flex;justify-content:space-between;padding:.2rem 0;font-size:.9375rem}
+.sum.big{font-size:1.1rem;font-weight:700;border-top:1px solid hsl(var(--border));margin-top:.4rem;padding-top:.6rem}
+.sum .m{color:hsl(var(--muted-foreground))}
+
+/* bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;background:hsl(var(--card));border-top:1px solid hsl(var(--border));padding:.7rem 1rem calc(.8rem + env(safe-area-inset-bottom));z-index:5}
+.bar .in{max-width:640px;margin:0 auto}
+.bar .line{display:flex;gap:.7rem;align-items:center;margin-top:.5rem}
+.bar .tot{flex:1;font-size:.75rem;color:hsl(var(--muted-foreground))}
+.bar .tot b{display:block;font-size:1.25rem;color:hsl(var(--foreground));letter-spacing:-.01em}
+
+/* dialogs */
+.ob-ic{font-size:2.5rem;margin:.2rem 0 .4rem}
+.ob-b{font-size:.95rem;line-height:1.55;margin:0}
+.steps{display:flex;gap:.4rem;justify-content:center;margin:1rem 0 .25rem}
+.steps i{width:.45rem;height:.45rem;border-radius:50%;background:hsl(var(--border))}
+.steps i.on{background:hsl(var(--foreground))}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:.45rem .9rem;align-items:center;font-size:.9rem}
+.keys h4{grid-column:1/-1;margin:.8rem 0 0;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:hsl(var(--muted-foreground))}
+.keys .k{display:flex;gap:.25rem;flex-wrap:wrap;justify-content:flex-end}
+.mlist{overflow:auto;max-height:44vh}
+.mrow{border:1px solid hsl(var(--border));border-radius:calc(var(--radius) - 2px);padding:.6rem;margin-top:.5rem}
+.mrow.ok{border-color:hsl(var(--success))}
+.mrow .s{font-weight:600}
+.mrow .raw{font-size:.72rem;color:hsl(var(--muted-foreground));font-weight:400;word-break:break-all}
+.mgrid{display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:.5rem;margin-top:.5rem}
+.mnote{font-size:.75rem;margin-top:.4rem;color:hsl(var(--muted-foreground));display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.mnote .good{color:hsl(var(--success));font-weight:600}.mnote .bad{color:hsl(var(--destructive));font-weight:600}.mnote .maybe{color:hsl(var(--warning));font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1 data-i18n="title"></h1>
+    <div class="acts">
+      <button class="btn btn-outline btn-icon" id="keysBtn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></button>
+      <button class="btn btn-outline btn-icon" id="help" aria-label="Guide">?</button>
+      <button class="btn btn-outline" id="lang">한국어</button>
+    </div>
+  </div>
+  <p class="sub" data-i18n="sub"></p>
+
+  <section class="card"><div class="card-content">
+    <div class="row2">
+      <div>
+        <label class="label" for="in-tax" data-i18n="tax"></label>
+        <div class="input-group"><input id="in-tax" inputmode="decimal"><span>%</span></div>
+        <div class="chips" id="taxchips"></div>
+      </div>
+      <div>
+        <label class="label" for="in-tip" data-i18n="tip"></label>
+        <div class="input-group"><input id="in-tip" inputmode="decimal"><span>%</span></div>
+        <div class="chips" id="tipchips"></div>
+      </div>
+    </div>
+  </div></section>
+
+  <div class="toolbar">
+    <input class="input" id="q" type="search" data-i18n-ph="search" autocomplete="off">
+    <div class="toggle-group" id="filterchips"></div>
+    <button class="toggle" id="dense" data-i18n="compact"></button>
+  </div>
+
+  <div class="tabbar"><div class="tabs-list" id="tabs" role="tablist"></div></div>
+  <div id="tables"></div>
+  <button class="btn btn-outline" id="addtable" style="width:100%;margin-bottom:.9rem" data-i18n="addtable"></button>
+
+  <section class="card"><div class="card-content">
+    <h2 class="card-title" data-i18n="breakdown"></h2>
+    <div id="warn"></div>
+    <div id="breakdown"></div>
+  </div></section>
+
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem">
+    <button class="btn btn-outline" id="copy" data-i18n="copy"></button>
+    <button class="btn btn-outline" id="copyunpaid" data-i18n="copyunpaid"></button>
+    <button class="btn btn-outline" id="new" data-i18n="newbill"></button>
+    <button class="btn btn-destructive-ghost" id="clear" data-i18n="clearall"></button>
+  </div>
+</main>
+
+<div class="bar"><div class="in">
+  <div class="progress"><i id="gprog"></i></div>
+  <div class="line">
+    <div class="tot"><span data-i18n="collected"></span> <span id="gpaid"></span><b id="gleft"></b></div>
+    <button class="btn btn-outline" id="cmdBtn" title="Ctrl/⌘ K">⌕ <span class="kbd" id="cmdKbd">⌘K</span></button>
+    <button class="btn" id="match" data-i18n="match"></button>
+  </div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<!-- Onboarding -->
+<dialog class="dialog" id="dlg-ob">
+  <div class="ob-ic" id="ob-ic"></div>
+  <h3 class="dialog-title" id="ob-t"></h3>
+  <p class="ob-b" id="ob-b"></p>
+  <div class="steps" id="ob-dots"></div>
+  <div class="dialog-footer" style="justify-content:space-between">
+    <button class="btn btn-ghost" id="ob-skip"></button>
+    <div style="display:flex;gap:.5rem"><button class="btn btn-outline" id="ob-back"></button><button class="btn" id="ob-next"></button></div>
+  </div>
+</dialog>
+
+<!-- Team roster -->
+<dialog class="dialog" id="dlg-roster">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+    <h3 class="dialog-title" data-i18n="rosterTitle"></h3>
+    <button class="toggle" id="rosterMode" data-i18n="rosterEdit"></button>
+  </div>
+  <p class="dialog-desc" id="rosterDesc"></p>
+  <input class="input" id="rosterQ" type="search" data-i18n-ph="rosterSearch" autocomplete="off" style="margin-bottom:.25rem">
+  <div class="rbody" id="rosterBody"></div>
+  <div class="dialog-footer" style="align-items:center">
+    <select class="select select-sm" id="rosterTarget" style="width:auto;margin-right:auto"></select>
+    <button class="btn btn-outline" id="rosterImport" data-i18n="rosterImport" hidden></button>
+    <button class="btn btn-destructive-ghost" id="rosterReset" data-i18n="rosterReset" hidden></button>
+    <button class="btn btn-outline" data-close data-i18n="cancel" id="rosterCancel"></button>
+    <button class="btn" id="rosterAdd"></button>
+  </div>
+</dialog>
+<datalist id="rosterNames"></datalist>
+
+<!-- Import roster chart -->
+<dialog class="dialog" id="dlg-rimport">
+  <h3 class="dialog-title" data-i18n="rosterImportTitle"></h3>
+  <p class="dialog-desc" data-i18n="rosterImportHint"></p>
+  <textarea class="textarea" id="rimpTxt" style="min-height:11rem" placeholder="Directing (2)&#10;* Hana Yoon&#10;* Ian Jung&#10;&#10;Cast (2)&#10;* Alex Kim (A)&#10;* Bora Lee (B)"></textarea>
+  <div class="dialog-footer"><button class="btn btn-outline" data-close data-i18n="cancel"></button><button class="btn" id="rimpGo" data-i18n="rosterImportGo"></button></div>
+</dialog>
+
+<!-- Shortcuts -->
+<dialog class="dialog" id="dlg-keys">
+  <h3 class="dialog-title" data-i18n="keysTitle"></h3>
+  <p class="dialog-desc" data-i18n="keysDesc"></p>
+  <div class="keys" id="keysBody"></div>
+  <div class="dialog-footer"><button class="btn" data-close data-i18n="done"></button></div>
+</dialog>
+
+<!-- Command palette -->
+<dialog class="dialog" id="dlg-cmd" style="padding:.75rem">
+  <input class="command-input" id="cmdIn" autocomplete="off" data-i18n-ph="cmdPh">
+  <div class="command-list" id="cmdList" role="listbox"></div>
+  <div class="muted" style="font-size:.72rem;padding:.6rem .25rem 0;display:flex;gap:.8rem;flex-wrap:wrap" id="cmdFoot"></div>
+</dialog>
+
+<!-- Paste names -->
+<dialog class="dialog" id="dlg-paste">
+  <h3 class="dialog-title" data-i18n="pasteTitle"></h3>
+  <p class="dialog-desc" data-i18n="pasteHint"></p>
+  <textarea class="textarea" id="pasteTxt" placeholder="Jisoo Park&#10;Minho Lee, minho@mail.com&#10;Tom Baek"></textarea>
+  <div class="dialog-footer"><button class="btn btn-outline" data-close data-i18n="cancel"></button><button class="btn" id="pasteGo" data-i18n="add"></button></div>
+</dialog>
+
+<!-- Match payments -->
+<dialog class="dialog" id="dlg-match">
+  <h3 class="dialog-title" data-i18n="matchTitle"></h3>
+  <p class="dialog-desc" data-i18n="matchHint"></p>
+  <textarea class="textarea" id="matchTxt" placeholder="Jisoo Park sent you $28.50&#10;minho.lee@mail.com, 31.20&#10;JS PARK  $25"></textarea>
+  <div class="mlist" id="matchList"></div>
+  <div class="dialog-footer"><button class="btn btn-outline" data-close data-i18n="cancel"></button><button class="btn btn-outline" id="matchParse" data-i18n="parse"></button><button class="btn" id="matchApply" data-i18n="apply" hidden></button></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const KEY = 'billsplit.v2';
+const CATS = [['f','food'],['b','beer'],['s','soju']];
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);
+const MOD = IS_MAC ? '⌘' : 'Ctrl', ALT = IS_MAC ? '⌥' : 'Alt';
+const I18N = {
+ en:{rosterImport:'Import chart',rosterImportTitle:'Import roster chart',rosterImportHint:'Paste your team chart: a heading with a count like “Directing (7)”, then one name per line. Bullets and (A)/(B) cast tags are fine. This replaces the current roster.',rosterImportGo:'Replace roster',rosterImportEmpty:'No names found.',rosterConfirmReplace:'Replace the current roster with this chart?',rosterTitle:'Team roster',rosterBtn:'From roster',rosterEdit:'Edit roster',rosterDone:'Pick people',rosterDescPick:'Tap names to select, then add them to the table.',rosterDescEdit:'Add or remove people and groups. Emails and e-transfer names you link are remembered here.',rosterAddN:'Add {x}',rosterSearch:'Search roster…',rosterAddM:'Add member…',rosterAddG:'New group name…',rosterReset:'Reset to default',rosterConfirmReset:'Reset the roster to the default team list? Your edits will be lost.',rosterSelAll:'Select all',rosterClear:'Clear',confirmDelGroup:'Delete this group and its members?',kRoster:'Open team roster',aRoster:'Team roster',rosterAdded:'Added {x} from roster',rosterNone:'No one matches.',title:'Split the Bill',sub:'Per table: food by who ate · beer by beer drinkers · soju by soju drinkers.',food:'Food',beer:'Beer',soju:'Soju',foodS:'F',beerS:'B',sojuS:'S',tax:'Tax',tip:'Tip (pre-tax)',hst:'13 HST',
+  everyone:'Everyone:',addname:'Add person — type a name, press Enter',add:'Add',paste:'Paste names',addtable:'+ Add table',allTab:'All',table:'Table',breakdown:'Overall',copy:'Copy summary',copyunpaid:'Copy unpaid list',newbill:'New bill (keep people)',clearall:'Clear everything',
+  qhint:'Press Enter to add the next person · paste a list to add many',
+  removeTable:'Remove table',clearTable:'Clear table',confirmTable:'Remove this table? Its people move to the first table.',confirmClearTable:'This is the last table. Clear its people and amounts?',
+  collected:'Collected',left:'left',ppl:'ppl',each:'each',nobodyPicked:'nobody picked',noOne:'{x}: no one is marked — that amount isn\'t split.',subtotal:'Subtotal',billTotal:'Bill total',collectedRow:'Collected',outstanding:'Outstanding',extra:'Extra',short:'Short',
+  nameph:'Name',search:'Search ( / )',all:'All',unpaid:'Unpaid',paidF:'Paid',compact:'Compact',removed:'Removed {x}',added:'Added {x}',copied:'Copied!',fresh:'Fresh bill',confirmClear:'Clear all tables, amounts and people?',
+  email:'Email',aliases:'Names used when paying (comma-separated)',moveTo:'Table',received:'Received $',remove:'Remove',details:'Details',hide:'Hide',paidMark:'Mark paid',collapse:'Collapse',
+  pasteTitle:'Paste names',pasteHint:'One person per line. An email after the name is optional.',cancel:'Cancel',done:'Got it',next:'Next',back:'Back',skip:'Skip',
+  match:'Match payments',matchTitle:'Match e-transfers',matchHint:'Paste what you see in your bank or Interac emails — a name or email and the amount, one per line.',parse:'Find matches',apply:'Mark paid',
+  who:'— who is this? —',remember:'Remember this name',exactM:'matched',maybeM:'possible match',noneM:'no match',already:'already paid',owes:'owes {x}',diffM:'differs from {x}',nothing:'Nothing found in that text.',applied:'Marked {x} paid',
+  sumTitle:'🍽 Bill split — total {x}',unpaidTitle:'💸 Still owed',allPaid:'Everyone has paid 🎉',taxL:'Tax',tipL:'Tip',sep:' / ',
+  cmdPh:'Find a person or run an action…',cmdPeople:'People',cmdActions:'Actions',cmdNone:'No results',cmdGo:'go to',cmdPaid:'toggle paid',cmdNav:'navigate',aNewTable:'New table',aMatch:'Match payments',aKeys:'Keyboard shortcuts',aDense:'Toggle compact rows',aGuide:'Quick guide',
+  keysTitle:'Keyboard shortcuts',keysDesc:'Everything you need to work through a long list without the mouse.',
+  gGlobal:'Anywhere',gName:'In a person\'s name field',gQuick:'In the “add person” field',gPalette:'In the find palette',
+  kSearch:'Focus search',kKeys:'Show shortcuts',kFind:'Find a person / run action',kTabs:'Previous / next tab',kNewT:'New table',kMatch:'Match payments',kDense:'Toggle compact',
+  kMove:'Next / previous person (end of list → add field)',kTag:'Toggle Food / Beer / Soju',kPaid:'Toggle paid',kDet:'Open details',
+  kAdd:'Add person (stays focused)',kPasteMany:'Paste a list to add many at once',kClear:'Clear field',kNavP:'Move selection',kGoP:'Go to person',kPaidP:'Toggle paid for selected',
+  ob1t:'Set up tables',ob1:'Each <b>table</b> has its own Food, Beer and Soju totals. Use the tabs to see <b>All</b> tables or just one, <b>+ Add table</b> to add one, and <b>Remove table</b> to delete it (the last table is cleared instead, so you always keep one).',
+  ob2t:'Add people fast',ob2:'Type a name in the field at the bottom of a table and press <b>Enter</b> — it stays focused for the next one. Or tap <b>From roster</b> to pick your team in one go, or paste a whole list. Then tap <b>F / B / S</b> on each person to set who had food, beer or soju.',
+  ob3t:'Mark who paid',ob3:'Tap the <b>circle</b> next to a name when they pay. The bottom bar tracks collected vs left. Filter by <b>Unpaid</b>, switch to <b>Compact</b> for one-line rows, and use <b>Copy unpaid list</b> for reminders.',
+  ob4t:'Match e-transfers',ob4:'Tap <b>Match payments</b> and paste sender names/emails with amounts. It links them to people and can <b>remember</b> odd spellings. Add emails and other names under a person\'s <b>Details</b>.',
+  ob5t:'Keyboard friendly',ob5:'Press <span class="kbd">?</span> any time for all shortcuts. Highlights: <span class="kbd">{mod}</span><span class="kbd">K</span> find a person, <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">Enter</span> move between names, <span class="kbd">{alt}</span><span class="kbd">F</span>/<span class="kbd">B</span>/<span class="kbd">S</span> toggle items, <span class="kbd">{alt}</span><span class="kbd">P</span> mark paid.'},
+ ko:{rosterImport:'명단 가져오기',rosterImportTitle:'명단 표 가져오기',rosterImportHint:'팀 명단 표를 붙여넣으세요: “연출팀 (7)”처럼 인원수가 붙은 제목 아래에 한 줄에 한 명. 글머리 기호와 (A)/(B) 표시도 괜찮아요. 현재 명단은 대체돼요.',rosterImportGo:'명단 대체',rosterImportEmpty:'이름을 찾지 못했어요.',rosterConfirmReplace:'현재 명단을 이 표로 대체할까요?',rosterTitle:'팀 명단',rosterBtn:'명단에서',rosterEdit:'명단 편집',rosterDone:'사람 선택',rosterDescPick:'이름을 눌러 선택한 뒤 테이블에 추가하세요.',rosterDescEdit:'사람과 그룹을 추가/삭제하세요. 연결한 이메일과 송금 이름은 여기에 저장돼요.',rosterAddN:'{x} 추가',rosterSearch:'명단 검색…',rosterAddM:'멤버 추가…',rosterAddG:'새 그룹 이름…',rosterReset:'기본값으로 되돌리기',rosterConfirmReset:'명단을 기본 팀 목록으로 되돌릴까요? 수정한 내용은 사라져요.',rosterSelAll:'전체 선택',rosterClear:'선택 해제',confirmDelGroup:'이 그룹과 멤버를 삭제할까요?',kRoster:'팀 명단 열기',aRoster:'팀 명단',rosterAdded:'명단에서 {x} 추가됨',rosterNone:'일치하는 사람이 없어요.',title:'더치페이',sub:'테이블별로: 음식은 먹은 사람끼리 · 맥주는 마신 사람끼리 · 소주는 마신 사람끼리.',food:'음식',beer:'맥주',soju:'소주',foodS:'음',beerS:'맥',sojuS:'소',tax:'세금',tip:'팁 (세전)',hst:'13 HST',
+  everyone:'전체:',addname:'사람 추가 — 이름 입력 후 Enter',add:'추가',paste:'이름 붙여넣기',addtable:'+ 테이블 추가',allTab:'전체',table:'테이블',breakdown:'전체',copy:'요약 복사',copyunpaid:'미납 목록 복사',newbill:'새 계산 (인원 유지)',clearall:'전체 초기화',
+  qhint:'Enter로 다음 사람 추가 · 목록을 붙여넣으면 한 번에 추가',
+  removeTable:'테이블 삭제',clearTable:'테이블 비우기',confirmTable:'이 테이블을 삭제할까요? 인원은 첫 번째 테이블로 이동해요.',confirmClearTable:'마지막 테이블이에요. 인원과 금액을 비울까요?',
+  collected:'걷은 금액',left:'남음',ppl:'명',each:'씩',nobodyPicked:'선택된 사람 없음',noOne:'{x}: 선택한 사람이 없어 해당 금액이 나뉘지 않아요.',subtotal:'소계',billTotal:'총 금액',collectedRow:'걷은 금액',outstanding:'미수금',extra:'남는 금액',short:'부족',
+  nameph:'이름',search:'검색 ( / )',all:'전체',unpaid:'미납',paidF:'납부',compact:'간단히',removed:'{x} 삭제됨',added:'{x} 추가됨',copied:'복사됨!',fresh:'새 계산서',confirmClear:'모든 테이블, 금액, 인원을 초기화할까요?',
+  email:'이메일',aliases:'송금 시 사용한 이름 (쉼표로 구분)',moveTo:'테이블',received:'받은 금액 $',remove:'삭제',details:'상세',hide:'닫기',paidMark:'납부 표시',collapse:'접기',
+  pasteTitle:'이름 붙여넣기',pasteHint:'한 줄에 한 명. 이름 뒤에 이메일을 써도 돼요.',cancel:'취소',done:'확인',next:'다음',back:'이전',skip:'건너뛰기',
+  match:'입금 확인',matchTitle:'이체 내역 매칭',matchHint:'은행 내역이나 Interac 이메일에서 보낸 사람(이름 또는 이메일)과 금액을 한 줄에 하나씩 붙여넣으세요.',parse:'매칭 찾기',apply:'납부 처리',
+  who:'— 누구인가요? —',remember:'이 이름 기억하기',exactM:'일치',maybeM:'추정 일치',noneM:'일치 없음',already:'이미 납부됨',owes:'{x} 내야 함',diffM:'{x}와 다름',nothing:'붙여넣은 내용에서 찾지 못했어요.',applied:'{x}명 납부 처리',
+  sumTitle:'🍽 정산 — 합계 {x}',unpaidTitle:'💸 아직 안 낸 사람',allPaid:'모두 납부 완료 🎉',taxL:'세금',tipL:'팁',sep:' / ',
+  cmdPh:'사람을 찾거나 명령 실행…',cmdPeople:'사람',cmdActions:'명령',cmdNone:'결과 없음',cmdGo:'이동',cmdPaid:'납부 전환',cmdNav:'이동',aNewTable:'새 테이블',aMatch:'입금 확인',aKeys:'단축키',aDense:'간단히 보기 전환',aGuide:'사용 가이드',
+  keysTitle:'단축키',keysDesc:'긴 명단도 마우스 없이 빠르게 처리하세요.',
+  gGlobal:'어디서나',gName:'사람 이름 입력란에서',gQuick:'“사람 추가” 입력란에서',gPalette:'찾기 창에서',
+  kSearch:'검색으로 이동',kKeys:'단축키 보기',kFind:'사람 찾기 / 명령 실행',kTabs:'이전 / 다음 탭',kNewT:'새 테이블',kMatch:'입금 확인',kDense:'간단히 보기 전환',
+  kMove:'다음 / 이전 사람 (끝에서 → 추가 입력란)',kTag:'음식 / 맥주 / 소주 전환',kPaid:'납부 전환',kDet:'상세 열기',
+  kAdd:'사람 추가 (계속 입력 가능)',kPasteMany:'목록을 붙여넣어 한 번에 추가',kClear:'입력 지우기',kNavP:'선택 이동',kGoP:'해당 사람으로 이동',kPaidP:'선택한 사람 납부 전환',
+  ob1t:'테이블 설정',ob1:'<b>테이블</b>마다 음식·맥주·소주 금액이 따로 있어요. 탭으로 <b>전체</b> 또는 한 테이블만 보고, <b>+ 테이블 추가</b>로 만들고, <b>테이블 삭제</b>로 지워요 (마지막 테이블은 삭제 대신 비워져서 항상 하나는 남아요).',
+  ob2t:'빠르게 사람 추가',ob2:'테이블 아래 입력란에 이름을 쓰고 <b>Enter</b> — 계속 입력할 수 있어요. <b>명단에서</b>로 팀원을 한 번에 고르거나 목록을 통째로 붙여넣어도 돼요. 이후 <b>음 / 맥 / 소</b> 버튼으로 누가 뭘 먹었는지 정하세요.',
+  ob3t:'납부 표시',ob3:'입금하면 이름 옆 <b>동그라미</b>를 누르세요. 아래 바에서 걷은 금액과 남은 금액을 볼 수 있어요. <b>미납</b> 필터, 한 줄 보기 <b>간단히</b>, <b>미납 목록 복사</b>를 활용하세요.',
+  ob4t:'이체 내역 매칭',ob4:'<b>입금 확인</b>을 누르고 보낸 사람 이름/이메일과 금액을 붙여넣으세요. 사람과 자동 연결되고 특이한 이름은 <b>기억</b>해요. 이메일과 다른 이름은 사람의 <b>상세</b>에서 추가해요.',
+  ob5t:'키보드로 빠르게',ob5:'언제든 <span class="kbd">?</span> 로 모든 단축키를 볼 수 있어요. 주요: <span class="kbd">{mod}</span><span class="kbd">K</span> 사람 찾기, <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">Enter</span> 이름 간 이동, <span class="kbd">{alt}</span><span class="kbd">F</span>/<span class="kbd">B</span>/<span class="kbd">S</span> 항목 전환, <span class="kbd">{alt}</span><span class="kbd">P</span> 납부 표시.'}
+};
+let LANG = (navigator.language||'').startsWith('ko') ? 'ko' : 'en';
+try { LANG = localStorage.getItem('billsplit.lang') || LANG; } catch {}
+const t = (k,x) => (I18N[LANG][k] ?? I18N.en[k] ?? k).replace('{x}', x ?? '').replace('{mod}',MOD).replace('{alt}',ALT);
+function applyLang(){
+  document.documentElement.lang = LANG; document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.placeholder=t(e.dataset.i18nPh));
+  $('#lang').textContent = LANG==='ko' ? 'English' : '한국어';
+  $('#cmdKbd').textContent = MOD+'K';
+}
+
+// ---------- team roster (preset)
+function defaultRoster(){
+  const g = (name,list)=>({id:uid(),name,members:list.map(x=>{ const [n,tag] = Array.isArray(x)?x:[x,'']; return {id:uid(),name:n,alias:'',email:'',tag}; })});
+  return {groups:[
+    g('Cast · Leads',[['Alex Kim','A'],['Bora Lee','A'],['Chris Park','B'],['Dana Choi (Dee)','B']]),
+    g('Cast · Ensemble',['Eli Han','Fiona Seo','Gus Moon']),
+    g('Directing',['Hana Yoon','Ian Jung']),
+    g('Production',['Jin Baek','Kay Song (Katie)','Leo Shin'])
+  ]};
+}
+const allMembers = () => S.roster.groups.flatMap(g=>g.members);
+const findMember = id => allMembers().find(m=>m.id===id);
+function rosterAliases(m){
+  const seen = new Set([nn(m.name)]), out = [];
+  [...m.name.split(/[()\/]/),...String(m.alias||'').split(/[,;]/)].map(x=>x.trim()).filter(Boolean).forEach(x=>{ const k = nn(x); if(k && !seen.has(k)){ seen.add(k); out.push(x); } });
+  return out.join(', ');
+}
+function findRoster(name){
+  const key = nn(name); if(key.length<2) return null;
+  const hits = allMembers().filter(m=>[m.name,...m.name.split(/[()\/]/),...String(m.alias||'').split(/[,;]/)].map(nn).filter(Boolean).includes(key));
+  return hits.length && new Set(hits.map(h=>nn(h.name))).size===1 ? hits[0] : null;
+}
+function syncRoster(p){ if(!p.rid) return; const m = findMember(p.rid); if(m){ m.email = p.email||''; m.alias = p.alias||''; } }
+
+// ---------- state
+let uidN = 0; const uid = () => Date.now().toString(36)+(uidN++);
+const mkPerson = (tid,name,email='',tags={}) => ({id:uid(),tid,name,f:tags.f??true,b:!!tags.b,s:!!tags.s,email,alias:'',paid:false,got:''});
+const mkTable = () => ({id:uid(),name:'',amt:{f:'',b:'',s:''}});
+function blank(){ const tb = mkTable(); return {tax:'13',tip:'0',tables:[tb],people:[1,2,3,4].map(i=>mkPerson(tb.id,'#'+i)),roster:defaultRoster()}; }
+function load(){
+  try{ const v2 = JSON.parse(localStorage.getItem(KEY)); if(v2 && v2.tables && v2.tables.length) return v2; }catch{}
+  try{ const v1 = JSON.parse(localStorage.getItem('billsplit.v1'));
+    if(v1 && v1.people){ const tb = mkTable(); tb.amt = {f:v1.amt.food,b:v1.amt.beer,s:v1.amt.soju};
+      return {tax:v1.tax,tip:v1.tip,tables:[tb],people:v1.people.map(p=>({...mkPerson(tb.id,p.name),f:p.f,b:p.b,s:p.s}))}; }
+  }catch{}
+  return blank();
+}
+let S = load(); if(!S.roster) S.roster = defaultRoster();
+
+const UI = {open:new Set(), collapsed:new Set(), filter:'all', q:'', view:'all', dense:window.matchMedia('(min-width:520px)').matches};
+try{ const d = localStorage.getItem('billsplit.dense'); if(d!==null) UI.dense = d==='1'; }catch{}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+const num = v => { const n = parseFloat(String(v).replace(/[^0-9.]/g,'')); return isFinite(n) ? n : 0; };
+const $$ = n => '$' + (Math.round(n*100)/100).toFixed(2);
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tname = tb => tb.name || t('table')+' '+(S.tables.indexOf(tb)+1);
+const P = id => S.people.find(p=>p.id===id);
+const chev = open => `<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${open?'M3.5 6l4.5 4.5L12.5 6':'M6 3.5l4.5 4.5L6 12.5'}"/></svg>`;
+const ICON_CHECK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>';
+
+// ---------- calc
+function calc(){
+  const mult = 1 + num(S.tax)/100 + num(S.tip)/100;
+  const owe = {}, tabs = {}; const lost = [];
+  S.tables.forEach(tb=>{
+    const A = {f:num(tb.amt.f),b:num(tb.amt.b),s:num(tb.amt.s)}, n = {f:0,b:0,s:0};
+    const mem = S.people.filter(p=>p.tid===tb.id);
+    mem.forEach(p=>CATS.forEach(([k])=>{ if(p[k]) n[k]++; }));
+    const share = {}; CATS.forEach(([k,l])=>{ share[k] = n[k] ? A[k]/n[k] : 0; if(A[k]>0 && !n[k]) lost.push(tname(tb)+' · '+t(l)); });
+    mem.forEach(p=>{ const base = CATS.reduce((s,[k])=>s+(p[k]?share[k]:0),0); owe[p.id] = Math.round(base*mult*100)/100; });
+    tabs[tb.id] = {A,n,share,sub:A.f+A.b+A.s,bill:(A.f+A.b+A.s)*mult,mem};
+  });
+  const got = {}; S.people.forEach(p=>{ got[p.id] = p.paid ? (p.got!=='' ? num(p.got) : (owe[p.id]||0)) : 0; });
+  const vals = o => Object.values(o);
+  const bill = vals(tabs).reduce((s,x)=>s+x.bill,0), sub = vals(tabs).reduce((s,x)=>s+x.sub,0);
+  const owed = vals(owe).reduce((s,x)=>s+x,0), collected = vals(got).reduce((s,x)=>s+x,0);
+  return {mult,owe,tabs,lost,got,bill,sub,owed,collected,left:owed-collected};
+}
+
+// ---------- render
+function personHTML(p){
+  const open = UI.open.has(p.id);
+  return `<div class="prow" data-pid="${p.id}" data-state="${p.paid?'paid':'unpaid'}">
+    <button class="pay" data-act="paid" aria-label="${t('paidMark')}" aria-pressed="${p.paid}">${ICON_CHECK}</button>
+    <div class="ncell"><input class="input input-ghost" data-pf="name" value="${esc(p.name)}" placeholder="${t('nameph')}" autocomplete="off" aria-label="${t('nameph')}"><div class="stat" data-stat></div></div>
+    <div class="toggle-group tg">${CATS.map(([k,l])=>`<button class="toggle" data-act="tag" data-k="${k}" data-tone="${l}" data-state="${p[k]?'on':'off'}" aria-pressed="${!!p[k]}" title="${t(l)}"><span class="long">${t(l)}</span><span class="short">${t(l+'S')}</span></button>`).join('')}</div>
+    <div class="owe" data-owe></div>
+    <button class="btn btn-ghost btn-sm btn-icon more" data-act="more" aria-expanded="${open}" aria-label="${t('details')}" title="${t('details')} (${ALT}+D)">${open?`<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10l4.5-4.5L12.5 10"/></svg>`:'⋯'}</button>
+    ${open?`<div class="det">
+      <div class="full"><label class="label">${t('email')}</label><input class="input input-sm" data-pf="email" type="email" value="${esc(p.email)}" autocomplete="off"></div>
+      <div class="full"><label class="label">${t('aliases')}</label><input class="input input-sm" data-pf="alias" value="${esc(p.alias)}" autocomplete="off"></div>
+      <div><label class="label">${t('moveTo')}</label><select class="select select-sm" data-pf="tid">${S.tables.map(tb=>`<option value="${tb.id}" ${tb.id===p.tid?'selected':''}>${esc(tname(tb))}</option>`).join('')}</select></div>
+      <div><label class="label">${t('received')}</label><input class="input input-sm" data-pf="got" inputmode="decimal" value="${esc(p.got)}" placeholder="auto"></div>
+      <div class="full"><button class="btn btn-destructive-ghost btn-sm" data-act="del">${t('remove')}</button></div>
+    </div>`:''}
+  </div>`;
+}
+function tableHTML(tb){
+  const col = UI.collapsed.has(tb.id), only = S.tables.length===1;
+  return `<section class="card tcard" data-tid="${tb.id}">
+    <div class="card-header">
+      <div class="trow">
+        <button class="btn btn-ghost btn-sm btn-icon" data-act="collapse" aria-label="${t('collapse')}" aria-expanded="${!col}">${chev(!col)}</button>
+        <input class="input input-ghost tname" data-tf="name" value="${esc(tb.name)}" placeholder="${esc(tname(tb))}" autocomplete="off">
+        <div class="ttot" data-ttot></div>
+        <button class="btn btn-destructive-ghost btn-sm" data-act="deltable">${only?t('clearTable'):t('removeTable')}</button>
+      </div>
+      <div class="tmeta" data-tmeta></div>
+      <div class="progress"><i data-tprog></i></div>
+    </div>
+    <div class="card-content" ${col?'hidden':''} style="padding-top:.2rem">
+      <div class="amt">
+        ${CATS.map(([k,l])=>`<div><label class="label"><i class="dot" style="background:hsl(var(--${l}))"></i>${t(l)}</label>
+          <div class="input-group"><span>$</span><input data-amt="${k}" inputmode="decimal" placeholder="0.00" value="${esc(tb.amt[k])}"></div>
+          <div class="per" data-per="${k}"></div></div>`).join('')}
+      </div>
+      <div class="bulk">${t('everyone')}${CATS.map(([k,l])=>`<button class="toggle" data-act="bulk" data-k="${k}" data-tone="${l}" data-state="off" style="height:1.7rem">${t(l)}</button>`).join('')}</div>
+      <div class="ppl">${S.people.filter(p=>p.tid===tb.id).map(personHTML).join('')}</div>
+    </div>
+    <div class="tfoot" ${col?'hidden':''}>
+      <div class="r"><input class="input" data-newname list="rosterNames" placeholder="${esc(t('addname'))}" enterkeyhint="done" autocomplete="off" aria-label="${esc(t('addname'))}">
+        <button class="btn" data-act="add">${t('add')}</button>
+        <button class="btn btn-outline" data-act="roster">${t('rosterBtn')}</button>
+        <button class="btn btn-outline" data-act="paste">${t('paste')}</button></div>
+      <div class="qhint">${t('qhint')}</div>
+    </div>
+  </section>`;
+}
+function renderAll(){
+  $('#rosterNames').innerHTML = allMembers().map(m=>`<option value="${esc(m.name)}"></option>`).join('');
+  if(UI.view!=='all' && !S.tables.some(x=>x.id===UI.view)) UI.view='all';
+  $('#tabs').innerHTML = `<button class="tabs-trigger" role="tab" data-state="${UI.view==='all'?'active':'inactive'}" data-tab="all">${t('allTab')}</button>`
+    + S.tables.map(tb=>`<button class="tabs-trigger" role="tab" data-state="${UI.view===tb.id?'active':'inactive'}" data-tab="${tb.id}">${esc(tname(tb))}<span class="count">${S.people.filter(p=>p.tid===tb.id).length}</span></button>`).join('')
+    + `<button class="tabs-trigger" data-variant="add" data-tab="+">${t('addtable')}</button>`;
+  $('#tables').className = UI.dense ? 'dense' : '';
+  $('#dense').dataset.state = UI.dense ? 'on' : 'off';
+  $('#tables').innerHTML = S.tables.filter(tb=>UI.view==='all'||tb.id===UI.view).map(tableHTML).join('');
+  update();
+}
+function toggles(el, opts, get, set){
+  el.innerHTML = opts.map(o=>`<button class="toggle" data-state="${String(get())===String(o[0])?'on':'off'}" data-v="${o[0]}">${o[1]}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('.toggle'); if(b) set(b.dataset.v); };
+}
+function renderChips(){
+  toggles($('#taxchips'), [[0,'0'],[13,t('hst')]], ()=>S.tax, v=>{S.tax=v; $('#in-tax').value=v; update();});
+  toggles($('#tipchips'), [[0,'0'],[10,'10'],[15,'15'],[18,'18'],[20,'20']], ()=>S.tip, v=>{S.tip=v; $('#in-tip').value=v; update();});
+  toggles($('#filterchips'), [['all',t('all')],['unpaid',t('unpaid')],['paid',t('paidF')]], ()=>UI.filter, v=>{UI.filter=v; update();});
+}
+function update(){
+  const c = calc();
+  S.tables.forEach(tb=>{
+    const el = document.querySelector(`[data-tid="${tb.id}"]`); if(!el) return;
+    const x = c.tabs[tb.id];
+    CATS.forEach(([k])=>{ el.querySelector(`[data-per="${k}"]`).textContent = x.n[k] ? `${x.n[k]}${LANG==='ko'?'':' '}${t('ppl')} · ${$$(x.share[k])} ${t('each')}` : (x.A[k]>0 ? t('nobodyPicked') : ''); });
+    el.querySelector('[data-ttot]').textContent = $$(x.bill);
+    const paidN = x.mem.filter(p=>p.paid).length, tOwed = x.mem.reduce((s,p)=>s+(c.owe[p.id]||0),0), tGot = x.mem.reduce((s,p)=>s+c.got[p.id],0);
+    el.querySelector('[data-tmeta]').innerHTML = `<span>${x.mem.length}${LANG==='ko'?'':' '}${t('ppl')}</span><span>✓ ${paidN}/${x.mem.length}</span><span>${$$(tGot)} / ${$$(tOwed)}</span>`;
+    el.querySelector('[data-tprog]').style.width = tOwed>0 ? Math.min(100,tGot/tOwed*100)+'%' : '0';
+    CATS.forEach(([k])=>{ const b = el.querySelector(`.bulk [data-k="${k}"]`); if(b) b.dataset.state = x.mem.length && x.mem.every(p=>p[k]) ? 'on' : 'off'; });
+  });
+  const q = UI.q.trim().toLowerCase();
+  S.people.forEach(p=>{
+    const row = document.querySelector(`[data-pid="${p.id}"]`); if(!row) return;
+    const owe = c.owe[p.id]||0, got = c.got[p.id];
+    row.dataset.state = p.paid ? 'paid' : 'unpaid';
+    row.querySelector('.pay').setAttribute('aria-pressed', p.paid);
+    row.querySelector('[data-owe]').textContent = $$(owe);
+    let st = '';
+    if(p.paid){ const d = got-owe; if(Math.abs(d)>=0.005) st += `<span class="badge badge-warning">${d>0?'+':'−'}${$$(Math.abs(d))}</span>`; }
+    if(p.email || p.alias) st += `<span class="badge badge-outline" title="${esc(p.email+' '+p.alias)}">🔗</span>`;
+    row.querySelector('[data-stat]').innerHTML = st;
+    const hit = !q || [p.name,p.email,p.alias].some(v=>String(v||'').toLowerCase().includes(q));
+    const fok = UI.filter==='all' || (UI.filter==='paid'?p.paid:!p.paid);
+    row.classList.toggle('hide', !(hit&&fok));
+  });
+  $('#gpaid').textContent = `${$$(c.collected)} / ${$$(c.owed)}`;
+  $('#gleft').textContent = c.left>0.004 ? `${$$(c.left)} ${t('left')}` : '✓ '+t('collectedRow');
+  $('#gprog').style.width = c.owed>0 ? Math.min(100,c.collected/c.owed*100)+'%' : '0';
+  $('#warn').innerHTML = c.lost.length ? `<div class="alert alert-warning" style="margin-bottom:.6rem">${t('noOne',c.lost.join(t('sep')))}</div>` : '';
+  const tax = c.sub*num(S.tax)/100, tip = c.sub*num(S.tip)/100, diff = c.owed - c.bill;
+  let h = `<div class="sum"><span class="m">${t('subtotal')}</span><span>${$$(c.sub)}</span></div>`;
+  if(tax) h += `<div class="sum"><span class="m">${t('taxL')} ${num(S.tax)}%</span><span>${$$(tax)}</span></div>`;
+  if(tip) h += `<div class="sum"><span class="m">${t('tipL')} ${num(S.tip)}%</span><span>${$$(tip)}</span></div>`;
+  h += `<div class="sum big"><span>${t('billTotal')}</span><span>${$$(c.bill)}</span></div>`;
+  if(Math.abs(diff)>=0.02) h += `<div class="sum"><span class="m">${diff>0?t('extra'):t('short')}</span><span>${$$(Math.abs(diff))}</span></div>`;
+  h += `<div class="sum"><span class="m">${t('collectedRow')}</span><span>${$$(c.collected)}</span></div>`;
+  h += `<div class="sum"><span class="m">${t('outstanding')}</span><span>${$$(Math.max(0,c.left))}</span></div>`;
+  $('#breakdown').innerHTML = h;
+  renderChips(); save();
+}
+
+// ---------- summaries
+function summary(){
+  const c = calc(); const L = [t('sumTitle',$$(c.bill))];
+  S.tables.forEach(tb=>{
+    const x = c.tabs[tb.id]; L.push('', `— ${tname(tb)} (${$$(x.bill)}) —`);
+    CATS.forEach(([k,l])=>{ if(x.A[k]>0 && x.n[k]) L.push(`${t(l)} ${$$(x.A[k])} ÷ ${x.n[k]} = ${$$(x.share[k])}`); });
+    x.mem.forEach(p=>{
+      const tags = CATS.filter(([k])=>p[k]).map(k=>t(k[1])).join('+') || '—';
+      L.push(`${p.paid?'✅':'⬜'} ${p.name||'?'} (${tags}): ${$$(c.owe[p.id])}`);
+    });
+  });
+  return L.join('\n');
+}
+function unpaidText(){
+  const c = calc(); const rows = S.people.filter(p=>!p.paid && (c.owe[p.id]||0)>0);
+  if(!rows.length) return t('allPaid');
+  return [t('unpaidTitle'),...rows.map(p=>`${p.name||'?'}: ${$$(c.owe[p.id])}`),'',`${t('outstanding')}: ${$$(c.left)}`].join('\n');
+}
+async function copyText(txt){
+  try { await navigator.clipboard.writeText(txt); }
+  catch { const a=document.createElement('textarea'); a.value=txt; document.body.append(a); a.select(); document.execCommand('copy'); a.remove(); }
+  toast(t('copied'));
+}
+let tt; function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),1500); }
+
+// ---------- adding people (quick syntax)
+function parseQuick(line){
+  let l = line.trim().replace(/^[-*•]\s+|^\d+[.)]\s+/,'');
+  const tags = {};
+  const em = (l.match(/[^\s,;<>]+@[^\s,;<>]+/)||[''])[0];
+  const name = l.replace(em,'').replace(/[<>,;]+/g,' ').replace(/\s+/g,' ').trim();
+  return {name: name || (em ? em.split('@')[0] : ''), email: em, tags};
+}
+function addFromLine(tid, line){
+  const q = parseQuick(line); if(!q.name) return null;
+  const m = findRoster(q.name);
+  const p = mkPerson(tid, m ? m.name : q.name, q.email || (m && m.email) || '', q.tags);
+  if(m){ p.rid = m.id; p.alias = rosterAliases(m); }
+  S.people.push(p); return p;
+}
+const focusNew = tid => { const n = document.querySelector(`[data-tid="${tid}"] [data-newname]`); if(n) n.focus(); };
+
+// ---------- table events
+const T = $('#tables');
+function tagToggle(row,p,k){ p[k] = !p[k]; const b = row.querySelector(`[data-act=tag][data-k=${k}]`); b.dataset.state = p[k]?'on':'off'; b.setAttribute('aria-pressed',p[k]); update(); }
+function focusName(pid){ const i = document.querySelector(`[data-pid="${pid}"] [data-pf=name]`); if(i) i.focus(); }
+function focusables(){ return [...T.querySelectorAll('[data-pf=name],[data-newname]')].filter(e=>e.offsetParent!==null); }
+function moveFocus(el,d){ const l = focusables(), i = l.indexOf(el), n = l[i+d]; if(n){ n.focus(); if(n.select) n.select(); } }
+
+T.addEventListener('input', e=>{
+  const el = e.target, card = el.closest('[data-tid]'); if(!card) return;
+  const tb = S.tables.find(x=>x.id===card.dataset.tid);
+  if(el.dataset.amt){ tb.amt[el.dataset.amt] = el.value; update(); }
+  else if(el.dataset.tf==='name'){ tb.name = el.value; save(); }
+  else if(el.dataset.pf && el.dataset.pf!=='tid'){ const pp = P(el.closest('[data-pid]').dataset.pid); pp[el.dataset.pf] = el.value; if(el.dataset.pf==='email'||el.dataset.pf==='alias') syncRoster(pp); update(); }
+});
+T.addEventListener('change', e=>{
+  if(e.target.dataset.pf==='tid'){ P(e.target.closest('[data-pid]').dataset.pid).tid = e.target.value; renderAll(); }
+});
+T.addEventListener('paste', e=>{
+  if(e.target.dataset.newname===undefined) return;
+  const txt = (e.clipboardData||window.clipboardData).getData('text');
+  if(!/\n/.test(txt.trim())) return;
+  e.preventDefault();
+  const tid = e.target.closest('[data-tid]').dataset.tid; let n = 0;
+  txt.split('\n').forEach(l=>{ if(addFromLine(tid,l)) n++; });
+  renderAll(); focusNew(tid); toast(t('added',n+' '+t('ppl')));
+});
+T.addEventListener('keydown', e=>{
+  const el = e.target;
+  if(el.dataset.newname!==undefined){
+    const tid = el.closest('[data-tid]').dataset.tid;
+    if(e.key==='Enter'){ e.preventDefault(); const p = addFromLine(tid, el.value); if(p){ renderAll(); focusNew(tid); toast(t('added',p.name)); } }
+    else if(e.key==='Escape'){ el.value=''; }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); moveFocus(el,-1); }
+    return;
+  }
+  const row = el.closest('.prow'); if(!row) return;
+  const p = P(row.dataset.pid), isName = el.dataset.pf==='name';
+  if(e.altKey && !e.ctrlKey && !e.metaKey){
+    const k = {KeyF:'f',KeyB:'b',KeyS:'s'}[e.code];
+    if(k){ e.preventDefault(); tagToggle(row,p,k); return; }
+    if(e.code==='KeyP'){ e.preventDefault(); p.paid=!p.paid; if(!p.paid) p.got=''; update(); return; }
+    if(e.code==='KeyD'){ e.preventDefault(); UI.open.has(p.id) ? UI.open.delete(p.id) : UI.open.add(p.id); renderAll(); focusName(p.id); return; }
+  }
+  if(isName){
+    if(e.key==='ArrowDown'||e.key==='Enter'){ e.preventDefault(); moveFocus(el,1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); moveFocus(el,-1); }
+  }
+});
+T.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const card = b.closest('[data-tid]'), tb = S.tables.find(x=>x.id===card.dataset.tid);
+  const row = b.closest('[data-pid]'), p = row && P(row.dataset.pid), act = b.dataset.act;
+  if(act==='paid'){ p.paid = !p.paid; if(!p.paid) p.got=''; update(); }
+  else if(act==='tag'){ tagToggle(row,p,b.dataset.k); }
+  else if(act==='more'){ UI.open.has(p.id) ? UI.open.delete(p.id) : UI.open.add(p.id); renderAll(); }
+  else if(act==='del'){ S.people = S.people.filter(x=>x!==p); renderAll(); toast(t('removed',p.name||'')); }
+  else if(act==='collapse'){ UI.collapsed.has(tb.id) ? UI.collapsed.delete(tb.id) : UI.collapsed.add(tb.id); renderAll(); }
+  else if(act==='bulk'){ const k=b.dataset.k, mem=S.people.filter(x=>x.tid===tb.id), all=mem.every(x=>x[k]); mem.forEach(x=>x[k]=!all); renderAll(); }
+  else if(act==='add'){ const inp = card.querySelector('[data-newname]'); const q = addFromLine(tb.id, inp.value); renderAll(); focusNew(tb.id); if(q) toast(t('added',q.name)); }
+  else if(act==='roster'){ openRoster(tb.id); }
+  else if(act==='paste'){ PASTE_TID = tb.id; $('#pasteTxt').value=''; $('#dlg-paste').showModal(); }
+  else if(act==='deltable'){
+    if(S.tables.length===1){
+      if(!confirm(t('confirmClearTable'))) return;
+      S.people = []; tb.amt = {f:'',b:'',s:''}; tb.name=''; renderAll(); return;
+    }
+    if(S.people.some(x=>x.tid===tb.id) && !confirm(t('confirmTable'))) return;
+    const first = S.tables.find(x=>x!==tb); S.people.forEach(x=>{ if(x.tid===tb.id) x.tid = first.id; });
+    S.tables = S.tables.filter(x=>x!==tb); UI.view='all'; renderAll();
+  }
+});
+function newTable(){ const tb = mkTable(); S.tables.push(tb); UI.view = tb.id; renderAll(); window.scrollTo({top:0}); const n = document.querySelector('.tname'); if(n) n.focus(); }
+$('#addtable').onclick = newTable;
+$('#tabs').addEventListener('click', e=>{
+  const b = e.target.closest('[data-tab]'); if(!b) return;
+  if(b.dataset.tab==='+') newTable(); else { UI.view = b.dataset.tab; renderAll(); }
+});
+function stepTab(d){ const ids = ['all',...S.tables.map(x=>x.id)]; UI.view = ids[(ids.indexOf(UI.view)+d+ids.length)%ids.length]; renderAll(); const a = $('#tabs [data-state=active]'); if(a) a.scrollIntoView({inline:'center',block:'nearest'}); }
+
+// paste names dialog
+let PASTE_TID = null;
+$('#pasteGo').onclick = ()=>{ let n=0; $('#pasteTxt').value.split('\n').forEach(l=>{ if(addFromLine(PASTE_TID,l)) n++; }); $('#dlg-paste').close(); renderAll(); focusNew(PASTE_TID); toast(t('added',n+' '+t('ppl'))); };
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+
+// ---------- payment matching
+const nn = s => String(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function lev(a,b){ const m=a.length,n=b.length; if(!m||!n) return Math.max(m,n); let prev=[...Array(n+1).keys()];
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); prev=cur; } return prev[n]; }
+const keysOf = p => [p.name,...String(p.alias||'').split(/[,;\n]/)].map(s=>s.trim()).filter(Boolean);
+function scoreKey(sN, kN){
+  if(kN.length<2||!sN) return 0;
+  if(sN===kN) return 1;
+  const sT = sN.split(' '), kT = kN.split(' ');
+  if([...sT].sort().join(' ')===[...kT].sort().join(' ')) return .97;
+  if(sN.replace(/ /g,'')===kN.replace(/ /g,'')) return .95;
+  const [short,long] = sT.length<=kT.length ? [sT,kT] : [kT,sT];
+  if(short.every(w=>long.includes(w)) && (short.length>1 || short[0].length>=3)) return .8;
+  const a = sN.replace(/ /g,''), b = kN.replace(/ /g,'');
+  const r = 1 - lev(a,b)/Math.max(a.length,b.length);
+  return r>=.8 ? r*.9 : 0;
+}
+function matchPerson(sender,email){
+  const sN = nn(sender), em = email.toLowerCase(); const scores = [];
+  S.people.forEach(p=>{
+    let s = 0;
+    if(em){
+      if(p.email && p.email.toLowerCase()===em) s = 1;
+      keysOf(p).forEach(k=>{ if(k.toLowerCase()===em) s = 1; });
+      const local = nn(em.split('@')[0].replace(/[._\d]+/g,' ')).replace(/ /g,'');
+      if(!s && local.length>=3) keysOf(p).forEach(k=>{ if(nn(k).replace(/ /g,'')===local) s=Math.max(s,.75); });
+    }
+    keysOf(p).forEach(k=>{ s = Math.max(s, scoreKey(sN, nn(k))); });
+    if(s>0) scores.push([s,p]);
+  });
+  scores.sort((a,b)=>b[0]-a[0]);
+  if(!scores.length) return {conf:'none'};
+  if(scores[1] && scores[0][0]-scores[1][0]<.05 && scores[0][0]<1) return {conf:'none'};
+  return {pid:scores[0][1].id, conf: scores[0][0]>=.9?'exact':(scores[0][0]>=.7?'maybe':'none')};
+}
+function parsePayments(txt){
+  const out = [];
+  txt.split('\n').forEach(raw=>{
+    let l = raw.trim(); if(!l) return;
+    const email = (l.match(/[^\s,;<>()]+@[^\s,;<>()]+/)||[''])[0]; l = l.replace(email,' ');
+    let amt = 0;
+    const withS = [...l.matchAll(/\$\s*(\d+(?:[.,]\d{1,2})?)/g)], any = [...l.matchAll(/(\d+(?:[.,]\d{1,2})?)/g)];
+    const m = withS.length ? withS[withS.length-1] : any[any.length-1];
+    if(m){ amt = parseFloat(m[1].replace(',','.')); l = l.replace(m[0],' '); }
+    const name = l.replace(/\b(has\s+)?sent\s+you\b.*$/i,' ').replace(/\b(cad|interac|e-?transfer|etransfer|received|deposit(ed)?|from|money|transfer)\b/gi,' ')
+      .replace(/[$|;,\t()<>:]+/g,' ').replace(/\s+-\s+/g,' ').replace(/\s+/g,' ').trim();
+    if(!name && !email) return;
+    const sender = name || email;
+    out.push({raw, sender, email, amt, ...matchPerson(sender,email), remember:true});
+  });
+  return out;
+}
+let MATCH = [];
+function renderMatches(){
+  const c = calc();
+  $('#matchList').innerHTML = MATCH.map((m,i)=>{
+    const p = m.pid && P(m.pid), owe = p ? (c.owe[p.id]||0) : 0;
+    const cls = m.conf==='exact'?'good':m.conf==='maybe'?'maybe':'bad';
+    let note = `<span class="${cls}">${t(m.conf==='exact'?'exactM':m.conf==='maybe'?'maybeM':'noneM')}</span>`;
+    if(p){ note += `<span>${t('owes',$$(owe))}</span>`;
+      if(Math.abs(m.amt-owe)>0.005) note += `<span class="maybe">${t('diffM',$$(owe))}</span>`;
+      if(p.paid) note += `<span class="bad">${t('already')}</span>`; }
+    return `<div class="mrow ${m.pid?'ok':''}" data-mi="${i}">
+      <div class="s">${esc(m.sender)} ${m.email&&m.email!==m.sender?`<span class="raw">${esc(m.email)}</span>`:''}</div>
+      <div class="mgrid">
+        <select class="select select-sm" data-mf="pid"><option value="">${t('who')}</option>${S.tables.map(tb=>`<optgroup label="${esc(tname(tb))}">${S.people.filter(x=>x.tid===tb.id).map(x=>`<option value="${x.id}" ${x.id===m.pid?'selected':''}>${esc(x.name||'?')}${x.paid?' ✓':''}</option>`).join('')}</optgroup>`).join('')}</select>
+        <input class="input input-sm" data-mf="amt" inputmode="decimal" value="${m.amt||''}" placeholder="$">
+      </div>
+      <div class="mnote">${note}${m.pid?`<label><input type="checkbox" data-mf="remember" ${m.remember?'checked':''}> ${t('remember')}</label>`:''}</div>
+    </div>`; }).join('');
+  $('#matchApply').hidden = !MATCH.length;
+}
+function openMatch(){ MATCH=[]; $('#matchList').innerHTML=''; $('#matchApply').hidden=true; $('#dlg-match').showModal(); }
+$('#match').onclick = openMatch;
+$('#matchParse').onclick = ()=>{ MATCH = parsePayments($('#matchTxt').value); if(!MATCH.length) toast(t('nothing')); renderMatches(); };
+$('#matchList').addEventListener('change', e=>{
+  const f = e.target.dataset.mf; if(!f) return; const m = MATCH[+e.target.closest('[data-mi]').dataset.mi];
+  if(f==='pid'){ m.pid = e.target.value||undefined; m.conf = m.pid?'exact':'none'; renderMatches(); }
+  else if(f==='amt'){ m.amt = num(e.target.value); renderMatches(); }
+  else if(f==='remember') m.remember = e.target.checked;
+});
+$('#matchApply').onclick = ()=>{
+  const c = calc(), sums = {};
+  MATCH.filter(m=>m.pid).forEach(m=>{
+    sums[m.pid] = (sums[m.pid]||0) + m.amt;
+    const p = P(m.pid), have = keysOf(p).map(nn);
+    if(m.remember){
+      if(m.email){ if(!p.email) p.email = m.email; else if(p.email.toLowerCase()!==m.email.toLowerCase() && !String(p.alias).toLowerCase().includes(m.email.toLowerCase())) p.alias = [p.alias,m.email].filter(Boolean).join(', '); }
+      if(m.sender!==m.email && !have.includes(nn(m.sender))) p.alias = [p.alias,m.sender].filter(Boolean).join(', ');
+    }
+  });
+  Object.entries(sums).forEach(([id,sum])=>{ const p = P(id), owe = c.owe[id]||0; p.paid = true; p.got = Math.abs(sum-owe)<0.005 ? '' : sum.toFixed(2); syncRoster(p); });
+  $('#dlg-match').close(); $('#matchTxt').value=''; renderAll(); toast(t('applied',Object.keys(sums).length));
+};
+
+// ---------- roster import (paste a chart: headings like "연출팀 (7)" then names)
+function parseChart(text){
+  const tok = text.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const bullet = /^[*•\-]\s*/.test(l), h = !bullet && /^(.*?)\s*\((\d+)\)\s*$/.exec(l);
+    return h ? {h:true,name:h[1].trim(),n:+h[2]} : {m:l.replace(/^[*•\-]\s*/,'')};
+  });
+  const groups = []; let cur = null, parent = null;
+  tok.forEach((x,i)=>{
+    if(x.h){
+      if(tok[i+1] && tok[i+1].h){ parent = {name:x.name,left:x.n}; cur = null; return; }
+      const full = parent && parent.left>0 ? parent.name+' · '+x.name : x.name;
+      if(parent){ parent.left -= x.n; if(parent.left<=0) parent = null; }
+      cur = {id:uid(),name:full,members:[]}; groups.push(cur);
+    } else {
+      if(!cur){ cur = {id:uid(),name:t('table')==='Table'?'Team':'명단',members:[]}; groups.push(cur); }
+      let name = x.m, tag = '';
+      const tg = /\s*\(([A-Z])\)\s*$/.exec(name); if(tg){ tag = tg[1]; name = name.slice(0,tg.index); }
+      name = name.replace(/\s*\((음악|보컬|연기)\)\s*$/,'').trim();
+      if(name) cur.members.push({id:uid(),name,alias:'',email:'',tag});
+    }
+  });
+  return groups.filter(g=>g.members.length);
+}
+$('#rosterImport').onclick = ()=>{ $('#rimpTxt').value=''; $('#dlg-rimport').showModal(); $('#rimpTxt').focus(); };
+$('#rimpGo').onclick = ()=>{
+  const g = parseChart($('#rimpTxt').value); if(!g.length){ toast(t('rosterImportEmpty')); return; }
+  if(allMembers().length && !confirm(t('rosterConfirmReplace'))) return;
+  S.roster = {groups:g}; $('#dlg-rimport').close(); renderRoster(); renderAll(); toast(t('rosterAdded', allMembers().length+(LANG==='ko'?'명':'')));
+};
+
+// ---------- roster dialog
+const RS = {mode:'pick',sel:new Set(),tid:null,q:''};
+const presentNames = () => new Set(S.people.map(p=>nn(p.name)));
+function renderRoster(){
+  const edit = RS.mode==='edit', q = RS.q.trim().toLowerCase(), present = presentNames();
+  const $b = $('#rosterBody'); const scroll = $b.scrollTop;
+  $('#rosterMode').dataset.state = edit ? 'on' : 'off'; $('#rosterMode').textContent = edit ? t('rosterDone') : t('rosterEdit');
+  $('#rosterDesc').textContent = edit ? t('rosterDescEdit') : t('rosterDescPick');
+  $('#rosterTarget').hidden = edit || S.tables.length<2;
+  $('#rosterTarget').innerHTML = S.tables.map(tb=>`<option value="${tb.id}" ${tb.id===RS.tid?'selected':''}>${esc(tname(tb))}</option>`).join('');
+  let h = '';
+  S.roster.groups.forEach(g=>{
+    const ms = g.members.filter(m=>!q || [m.name,m.alias,m.email,m.tag].join(' ').toLowerCase().includes(q));
+    if(q && !ms.length && !edit) return;
+    const free = ms.filter(m=>!present.has(nn(m.name))), allSel = free.length && free.every(m=>RS.sel.has(m.id));
+    h += edit
+      ? `<div class="rhead"><input class="input input-ghost" style="max-width:220px" data-gname="${g.id}" value="${esc(g.name)}"><span class="muted">${g.members.length}</span><button class="btn btn-destructive-ghost btn-sm" data-gdel="${g.id}">${t('remove')}</button></div>`
+      : `<div class="rhead"><b>${esc(g.name)}</b><span class="muted">${ms.length}</span>${free.length?`<button class="btn btn-ghost btn-sm" data-rsel="${g.id}">${allSel?t('rosterClear'):t('rosterSelAll')}</button>`:''}</div>`;
+    h += '<div class="rchips">' + ms.map(m=>{
+      const tag = m.tag ? `<small>${esc(m.tag)}</small>` : '';
+      if(edit) return `<span class="rchip edit"><span data-rename="${m.id}" style="cursor:text" title="${t('rename')||''}">${esc(m.name)}</span>${tag}<button data-rdel="${m.id}" aria-label="${t('remove')}">×</button></span>`;
+      const here = present.has(nn(m.name));
+      return `<button class="toggle rchip" data-mid="${m.id}" data-state="${RS.sel.has(m.id)?'on':'off'}" ${here?'disabled':''}>${here?'✓ ':''}${esc(m.name)}${tag}</button>`;
+    }).join('') + '</div>';
+    if(edit) h += `<input class="input input-sm radd" data-gadd="${g.id}" placeholder="${esc(t('rosterAddM'))}" autocomplete="off">`;
+  });
+  if(edit) h += `<div class="rhead" style="margin-top:1.2rem"><input class="input input-sm" style="max-width:260px" data-gnew placeholder="${esc(t('rosterAddG'))}" autocomplete="off"></div>`;
+  else if(!h) h = `<div class="muted" style="padding:1rem 0;font-size:.9rem">${t('rosterNone')}</div>`;
+  $b.innerHTML = h; $b.scrollTop = scroll;
+  $('#rosterAdd').hidden = edit; $('#rosterReset').hidden = !edit; $('#rosterImport').hidden = !edit;
+  $('#rosterAdd').textContent = t('rosterAddN', RS.sel.size + (LANG==='ko'?'명':'')); $('#rosterAdd').disabled = !RS.sel.size;
+  $('#rosterCancel').textContent = edit ? t('done') : t('cancel');
+}
+function openRoster(tid){
+  RS.mode='pick'; RS.sel.clear(); RS.q=''; RS.tid = tid || (UI.view!=='all' ? UI.view : S.tables[0].id);
+  $('#rosterQ').value=''; renderRoster(); if(!$('#dlg-roster').open) $('#dlg-roster').showModal(); $('#rosterQ').focus();
+}
+$('#rosterQ').addEventListener('input', e=>{ RS.q=e.target.value; renderRoster(); });
+$('#rosterMode').onclick = ()=>{ RS.mode = RS.mode==='edit'?'pick':'edit'; renderRoster(); };
+$('#rosterTarget').onchange = e=>{ RS.tid = e.target.value; };
+$('#rosterBody').addEventListener('click', e=>{
+  const b = e.target.closest('button,[data-rename]'); if(!b) return; const d = b.dataset;
+  if(d.mid){ RS.sel.has(d.mid) ? RS.sel.delete(d.mid) : RS.sel.add(d.mid); renderRoster(); }
+  else if(d.rsel){ const g = S.roster.groups.find(x=>x.id===d.rsel), present = presentNames(), q = RS.q.trim().toLowerCase();
+    const free = g.members.filter(m=>!present.has(nn(m.name)) && (!q || [m.name,m.alias,m.email,m.tag].join(' ').toLowerCase().includes(q)));
+    const all = free.every(m=>RS.sel.has(m.id)); free.forEach(m=>all ? RS.sel.delete(m.id) : RS.sel.add(m.id)); renderRoster(); }
+  else if(d.rdel){ S.roster.groups.forEach(g=>g.members = g.members.filter(m=>m.id!==d.rdel)); renderRoster(); renderAll(); }
+  else if(d.gdel){ if(confirm(t('confirmDelGroup'))){ S.roster.groups = S.roster.groups.filter(g=>g.id!==d.gdel); renderRoster(); renderAll(); } }
+  else if(d.rename){ const m = findMember(d.rename), n = prompt('', m.name); if(n && n.trim()){ m.name = n.trim(); renderRoster(); renderAll(); } }
+});
+$('#rosterBody').addEventListener('keydown', e=>{
+  if(e.key!=='Enter') return; const el = e.target, v = el.value.trim(); if(!v) return;
+  if(el.dataset.gadd){ const g = S.roster.groups.find(x=>x.id===el.dataset.gadd); g.members.push({id:uid(),name:v,alias:'',email:'',tag:''}); renderRoster(); renderAll(); const n = $(`[data-gadd="${g.id}"]`); if(n) n.focus(); }
+  else if('gnew' in el.dataset){ S.roster.groups.push({id:uid(),name:v,members:[]}); renderRoster(); renderAll(); const n = $('[data-gadd]:last-of-type'); [...document.querySelectorAll('[data-gadd]')].pop()?.focus(); }
+});
+$('#rosterBody').addEventListener('change', e=>{ if(e.target.dataset.gname){ const g = S.roster.groups.find(x=>x.id===e.target.dataset.gname); g.name = e.target.value.trim() || g.name; save(); } });
+$('#rosterReset').onclick = ()=>{ if(confirm(t('rosterConfirmReset'))){ S.roster = defaultRoster(); renderRoster(); renderAll(); } };
+$('#rosterAdd').onclick = ()=>{
+  const present = presentNames(), seen = new Set(), picked = [];
+  allMembers().forEach(m=>{ const k = nn(m.name); if(RS.sel.has(m.id) && !present.has(k) && !seen.has(k)){ seen.add(k); picked.push(m); } });
+  picked.forEach(m=>{ const pp = mkPerson(RS.tid, m.name, m.email||''); pp.rid = m.id; pp.alias = rosterAliases(m); S.people.push(pp); });
+  $('#dlg-roster').close(); UI.view = UI.view==='all' ? 'all' : RS.tid; renderAll(); toast(t('rosterAdded', picked.length+(LANG==='ko'?'명':'')));
+};
+
+// ---------- command palette (find person / actions)
+let CMD = {items:[],sel:0};
+function cmdBuild(){
+  const q = $('#cmdIn').value.trim().toLowerCase(), c = calc();
+  const people = S.people.map(p=>{ const tb = S.tables.find(x=>x.id===p.tid);
+    return {kind:'p',p,label:p.name||'?',sub:`${tname(tb)} · ${$$(c.owe[p.id]||0)}`,hay:[p.name,p.email,p.alias,tname(tb)].join(' ').toLowerCase()}; })
+    .filter(i=>!q||i.hay.includes(q)).slice(0,40);
+  const acts = [
+    {kind:'a',label:t('aNewTable'),sub:'T',run:()=>newTable()},
+    {kind:'a',label:t('aRoster'),sub:'R',run:()=>openRoster()},
+    {kind:'a',label:t('aMatch'),sub:'M',run:()=>openMatch()},
+    {kind:'a',label:t('aDense'),sub:'C',run:()=>toggleDense()},
+    {kind:'a',label:t('aKeys'),sub:'?',run:()=>openKeys()},
+    {kind:'a',label:t('aGuide'),sub:'',run:()=>openOB()}
+  ].filter(i=>!q||i.label.toLowerCase().includes(q));
+  CMD.items = [...people,...acts]; CMD.sel = Math.min(CMD.sel, Math.max(0,CMD.items.length-1));
+}
+function cmdRender(){
+  let h = '', lastKind = '';
+  CMD.items.forEach((i,idx)=>{
+    if(i.kind!==lastKind){ h += `<div class="command-group">${t(i.kind==='p'?'cmdPeople':'cmdActions')}</div>`; lastKind = i.kind; }
+    h += `<div class="command-item" role="option" data-ci="${idx}" data-selected="${idx===CMD.sel}">${i.kind==='p'?`<span style="color:hsl(var(--success))">${i.p.paid?'✓':'○'}</span>`:''}<span>${esc(i.label)}</span><span class="sub">${esc(i.sub)}</span></div>`;
+  });
+  $('#cmdList').innerHTML = h || `<div class="command-group">${t('cmdNone')}</div>`;
+  const sel = $('#cmdList [data-selected=true]'); if(sel) sel.scrollIntoView({block:'nearest'});
+  $('#cmdFoot').innerHTML = `<span><span class="kbd">↑</span><span class="kbd">↓</span> ${t('cmdNav')}</span><span><span class="kbd">Enter</span> ${t('cmdGo')}</span><span><span class="kbd">${ALT}</span><span class="kbd">Enter</span> ${t('cmdPaid')}</span>`;
+}
+function openCmd(){ $('#cmdIn').value=''; CMD.sel=0; cmdBuild(); cmdRender(); if(!$('#dlg-cmd').open) $('#dlg-cmd').showModal(); $('#cmdIn').focus(); }
+function goPerson(p){
+  $('#dlg-cmd').close(); UI.q=''; $('#q').value=''; UI.filter='all'; UI.collapsed.delete(p.tid);
+  if(UI.view!=='all') UI.view = p.tid; renderAll();
+  const row = document.querySelector(`[data-pid="${p.id}"]`); if(!row) return;
+  row.scrollIntoView({block:'center'}); focusName(p.id); row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1500);
+}
+$('#cmdIn').addEventListener('input', ()=>{ CMD.sel=0; cmdBuild(); cmdRender(); });
+$('#cmdIn').addEventListener('keydown', e=>{
+  const n = CMD.items.length;
+  if(e.key==='ArrowDown'){ e.preventDefault(); CMD.sel = (CMD.sel+1)%Math.max(1,n); cmdRender(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); CMD.sel = (CMD.sel-1+n)%Math.max(1,n); cmdRender(); }
+  else if(e.key==='Enter'){ e.preventDefault(); const i = CMD.items[CMD.sel]; if(!i) return;
+    if(i.kind==='a'){ $('#dlg-cmd').close(); i.run(); }
+    else if(e.altKey){ i.p.paid=!i.p.paid; if(!i.p.paid) i.p.got=''; update(); cmdBuild(); cmdRender(); }
+    else goPerson(i.p); }
+});
+$('#cmdList').addEventListener('click', e=>{ const el = e.target.closest('[data-ci]'); if(!el) return; CMD.sel=+el.dataset.ci; const i = CMD.items[CMD.sel]; if(i.kind==='a'){ $('#dlg-cmd').close(); i.run(); } else goPerson(i.p); });
+$('#cmdBtn').onclick = openCmd;
+
+// ---------- shortcuts dialog + onboarding
+function openKeys(){
+  const K = (...a)=>`<span class="k">${a.map(x=>`<span class="kbd">${x}</span>`).join('')}</span>`;
+  const rows = [
+    ['gGlobal',[[K(MOD,'K'),'kFind'],[K('/'),'kSearch'],[K('['),'kTabs',K(']')],[K('T'),'kNewT'],[K('R'),'kRoster'],[K('M'),'kMatch'],[K('C'),'kDense'],[K('?'),'kKeys']]],
+    ['gName',[[K('↑','↓','Enter'),'kMove'],[K(ALT,'F')+K('B')+K('S'),'kTag'],[K(ALT,'P'),'kPaid'],[K(ALT,'D'),'kDet']]],
+    ['gQuick',[[K('Enter'),'kAdd'],[K('Paste'),'kPasteMany'],[K('Esc'),'kClear']]],
+    ['gPalette',[[K('↑','↓'),'kNavP'],[K('Enter'),'kGoP'],[K(ALT,'Enter'),'kPaidP']]]
+  ];
+  $('#keysBody').innerHTML = rows.map(([g,items])=>`<h4>${t(g)}</h4>`+items.map(([k,d,extra])=>`${k}<span>${t(d)}${extra?' '+extra:''}</span>`).join('')).join('');
+  if(!$('#dlg-keys').open) $('#dlg-keys').showModal();
+}
+$('#keysBtn').onclick = openKeys;
+let OB = 0; const OB_IC = ['🗂️','⌨️','✅','🔗','🚀'];
+function renderOB(){
+  $('#ob-ic').textContent = OB_IC[OB]; $('#ob-t').textContent = t('ob'+(OB+1)+'t'); $('#ob-b').innerHTML = t('ob'+(OB+1));
+  $('#ob-dots').innerHTML = OB_IC.map((_,i)=>`<i class="${i===OB?'on':''}"></i>`).join('');
+  $('#ob-back').textContent = t('back'); $('#ob-back').hidden = OB===0;
+  $('#ob-skip').textContent = t('skip'); $('#ob-skip').hidden = OB===OB_IC.length-1;
+  $('#ob-next').textContent = OB===OB_IC.length-1 ? t('done') : t('next');
+}
+function openOB(){ OB = 0; renderOB(); $('#dlg-ob').showModal(); $('#ob-next').focus(); }
+function closeOB(){ $('#dlg-ob').close(); try{localStorage.setItem('billsplit.onboarded','1')}catch{} }
+$('#ob-next').onclick = ()=>{ if(OB===OB_IC.length-1) closeOB(); else { OB++; renderOB(); } };
+$('#ob-back').onclick = ()=>{ OB--; renderOB(); };
+$('#ob-skip').onclick = closeOB;
+$('#dlg-ob').addEventListener('keydown', e=>{ if(e.key==='ArrowRight') $('#ob-next').click(); if(e.key==='ArrowLeft' && OB>0) $('#ob-back').click(); });
+$('#dlg-ob').addEventListener('close', ()=>{ try{localStorage.setItem('billsplit.onboarded','1')}catch{} });
+$('#help').onclick = openOB;
+
+// ---------- dialogs: close on backdrop click (Esc is native)
+document.querySelectorAll('dialog').forEach(d=>{
+  let down = false;
+  const outside = e => { const r = d.getBoundingClientRect(); return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom; };
+  d.addEventListener('mousedown', e=>{ down = e.target===d && outside(e); });
+  d.addEventListener('click', e=>{ if(down && e.target===d && outside(e)) d.close(); down = false; });
+});
+
+// ---------- global keys
+function toggleDense(){ UI.dense = !UI.dense; try{localStorage.setItem('billsplit.dense',UI.dense?'1':'0')}catch{} renderAll(); }
+$('#dense').onclick = toggleDense;
+document.addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && e.code==='KeyK'){ e.preventDefault(); if($('#dlg-cmd').open) $('#dlg-cmd').close(); else openCmd(); return; }
+  const tg = e.target, typing = !!(tg.matches && tg.matches('input,textarea,select,[contenteditable]'));
+  if(typing || document.querySelector('dialog[open]') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(e.key==='/'){ e.preventDefault(); $('#q').focus(); }
+  else if(e.key==='?'){ e.preventDefault(); openKeys(); }
+  else if(e.key==='['){ stepTab(-1); }
+  else if(e.key===']'){ stepTab(1); }
+  else if(e.key==='t'||e.key==='T'){ e.preventDefault(); newTable(); }
+  else if(e.key==='r'||e.key==='R'){ e.preventDefault(); openRoster(); }
+  else if(e.key==='m'||e.key==='M'){ e.preventDefault(); openMatch(); }
+  else if(e.key==='c'||e.key==='C'){ toggleDense(); }
+});
+
+// ---------- misc controls
+$('#in-tax').value = S.tax; $('#in-tip').value = S.tip;
+$('#in-tax').addEventListener('input', e=>{ S.tax=e.target.value; update(); });
+$('#in-tip').addEventListener('input', e=>{ S.tip=e.target.value; update(); });
+$('#q').addEventListener('input', e=>{ UI.q=e.target.value; update(); });
+$('#q').addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.target.value=''; UI.q=''; update(); e.target.blur(); } });
+$('#copy').onclick = ()=>copyText(summary());
+$('#copyunpaid').onclick = ()=>copyText(unpaidText());
+$('#new').onclick = ()=>{
+  S.tables.forEach(tb=>tb.amt={f:'',b:'',s:''});
+  S.people.forEach(p=>{p.f=true;p.b=false;p.s=false;p.paid=false;p.got='';});
+  renderAll(); toast(t('fresh'));
+};
+$('#clear').onclick = ()=>{
+  if(!confirm(t('confirmClear'))) return;
+  const keep = S.roster; S = blank(); S.roster = keep; UI.open.clear(); UI.view='all'; $('#in-tax').value=S.tax; $('#in-tip').value=S.tip; renderAll();
+};
+$('#lang').onclick = ()=>{ LANG = LANG==='ko'?'en':'ko'; try{localStorage.setItem('billsplit.lang',LANG)}catch{} applyLang(); renderAll();
+  if($('#dlg-match').open) renderMatches(); if($('#dlg-ob').open) renderOB(); if($('#dlg-keys').open) openKeys(); if($('#dlg-roster').open) renderRoster(); };
+applyLang(); renderAll();
+try{ if(!localStorage.getItem('billsplit.onboarded')) openOB(); }catch{}
+</script>
+</body>
+</html>
