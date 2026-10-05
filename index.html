@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Split the Bill</title>
+<script>try{var th=localStorage.getItem('billsplit.theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th}catch(e){}</script>
 <link rel="stylesheet" href="ds.css">
 <style>
 /* App layer — tokens + ds.css components only (see ds.css rules) */
@@ -114,6 +115,7 @@ h1{font-size:1.65rem;margin:.5rem 0 .15rem;letter-spacing:-.02em}
   <div class="top">
     <h1 data-i18n="title"></h1>
     <div class="acts">
+      <button class="btn btn-outline btn-icon" id="themeBtn" aria-label="Theme"></button>
       <button class="btn btn-outline btn-icon" id="keysBtn" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg></button>
       <button class="btn btn-outline btn-icon" id="help" aria-label="Guide">?</button>
       <button class="btn btn-outline" id="lang">한국어</button>
@@ -248,7 +250,7 @@ const CATS = [['f','food'],['b','beer'],['s','soju']];
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);
 const MOD = IS_MAC ? '⌘' : 'Ctrl', ALT = IS_MAC ? '⌥' : 'Alt';
 const I18N = {
- en:{rosterImport:'Import chart',rosterImportTitle:'Import roster chart',rosterImportHint:'Paste your team chart: a heading with a count like “Directing (7)”, then one name per line. Bullets and (A)/(B) cast tags are fine. This replaces the current roster.',rosterImportGo:'Replace roster',rosterImportEmpty:'No names found.',rosterConfirmReplace:'Replace the current roster with this chart?',rosterTitle:'Team roster',rosterBtn:'From roster',rosterEdit:'Edit roster',rosterDone:'Pick people',rosterDescPick:'Tap names to select, then add them to the table.',rosterDescEdit:'Add or remove people and groups. Emails and e-transfer names you link are remembered here.',rosterAddN:'Add {x}',rosterSearch:'Search roster…',rosterAddM:'Add member…',rosterAddG:'New group name…',rosterReset:'Reset to default',rosterConfirmReset:'Reset the roster to the default team list? Your edits will be lost.',rosterSelAll:'Select all',rosterClear:'Clear',confirmDelGroup:'Delete this group and its members?',kRoster:'Open team roster',aRoster:'Team roster',rosterAdded:'Added {x} from roster',rosterNone:'No one matches.',title:'Split the Bill',sub:'Per table: food by who ate · beer by beer drinkers · soju by soju drinkers.',food:'Food',beer:'Beer',soju:'Soju',foodS:'F',beerS:'B',sojuS:'S',tax:'Tax',tip:'Tip (pre-tax)',hst:'13 HST',
+ en:{theme:'Theme',theme_system:'System',theme_light:'Light',theme_dark:'Dark',rosterImport:'Import chart',rosterImportTitle:'Import roster chart',rosterImportHint:'Paste your team chart: a heading with a count like “Directing (7)”, then one name per line. Bullets and (A)/(B) cast tags are fine. This replaces the current roster.',rosterImportGo:'Replace roster',rosterImportEmpty:'No names found.',rosterConfirmReplace:'Replace the current roster with this chart?',rosterTitle:'Team roster',rosterBtn:'From roster',rosterEdit:'Edit roster',rosterDone:'Pick people',rosterDescPick:'Tap names to select, then add them to the table.',rosterDescEdit:'Add or remove people and groups. Emails and e-transfer names you link are remembered here.',rosterAddN:'Add {x}',rosterSearch:'Search roster…',rosterAddM:'Add member…',rosterAddG:'New group name…',rosterReset:'Reset to default',rosterConfirmReset:'Reset the roster to the default team list? Your edits will be lost.',rosterSelAll:'Select all',rosterClear:'Clear',confirmDelGroup:'Delete this group and its members?',kRoster:'Open team roster',aRoster:'Team roster',rosterAdded:'Added {x} from roster',rosterNone:'No one matches.',title:'Split the Bill',sub:'Per table: food by who ate · beer by beer drinkers · soju by soju drinkers.',food:'Food',beer:'Beer',soju:'Soju',foodS:'F',beerS:'B',sojuS:'S',tax:'Tax',tip:'Tip (pre-tax)',hst:'13 HST',
   everyone:'Everyone:',addname:'Add person — type a name, press Enter',add:'Add',paste:'Paste names',addtable:'+ Add table',allTab:'All',table:'Table',breakdown:'Overall',copy:'Copy summary',copyunpaid:'Copy unpaid list',newbill:'New bill (keep people)',clearall:'Clear everything',
   qhint:'Press Enter to add the next person · paste a list to add many',
   removeTable:'Remove table',clearTable:'Clear table',confirmTable:'Remove this table? Its people move to the first table.',confirmClearTable:'This is the last table. Clear its people and amounts?',
@@ -270,7 +272,7 @@ const I18N = {
   ob3t:'Mark who paid',ob3:'Tap the <b>circle</b> next to a name when they pay. The bottom bar tracks collected vs left. Filter by <b>Unpaid</b>, switch to <b>Compact</b> for one-line rows, and use <b>Copy unpaid list</b> for reminders.',
   ob4t:'Match e-transfers',ob4:'Tap <b>Match payments</b> and paste sender names/emails with amounts. It links them to people and can <b>remember</b> odd spellings. Add emails and other names under a person\'s <b>Details</b>.',
   ob5t:'Keyboard friendly',ob5:'Press <span class="kbd">?</span> any time for all shortcuts. Highlights: <span class="kbd">{mod}</span><span class="kbd">K</span> find a person, <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">Enter</span> move between names, <span class="kbd">{alt}</span><span class="kbd">F</span>/<span class="kbd">B</span>/<span class="kbd">S</span> toggle items, <span class="kbd">{alt}</span><span class="kbd">P</span> mark paid.'},
- ko:{rosterImport:'명단 가져오기',rosterImportTitle:'명단 표 가져오기',rosterImportHint:'팀 명단 표를 붙여넣으세요: “연출팀 (7)”처럼 인원수가 붙은 제목 아래에 한 줄에 한 명. 글머리 기호와 (A)/(B) 표시도 괜찮아요. 현재 명단은 대체돼요.',rosterImportGo:'명단 대체',rosterImportEmpty:'이름을 찾지 못했어요.',rosterConfirmReplace:'현재 명단을 이 표로 대체할까요?',rosterTitle:'팀 명단',rosterBtn:'명단에서',rosterEdit:'명단 편집',rosterDone:'사람 선택',rosterDescPick:'이름을 눌러 선택한 뒤 테이블에 추가하세요.',rosterDescEdit:'사람과 그룹을 추가/삭제하세요. 연결한 이메일과 송금 이름은 여기에 저장돼요.',rosterAddN:'{x} 추가',rosterSearch:'명단 검색…',rosterAddM:'멤버 추가…',rosterAddG:'새 그룹 이름…',rosterReset:'기본값으로 되돌리기',rosterConfirmReset:'명단을 기본 팀 목록으로 되돌릴까요? 수정한 내용은 사라져요.',rosterSelAll:'전체 선택',rosterClear:'선택 해제',confirmDelGroup:'이 그룹과 멤버를 삭제할까요?',kRoster:'팀 명단 열기',aRoster:'팀 명단',rosterAdded:'명단에서 {x} 추가됨',rosterNone:'일치하는 사람이 없어요.',title:'더치페이',sub:'테이블별로: 음식은 먹은 사람끼리 · 맥주는 마신 사람끼리 · 소주는 마신 사람끼리.',food:'음식',beer:'맥주',soju:'소주',foodS:'음',beerS:'맥',sojuS:'소',tax:'세금',tip:'팁 (세전)',hst:'13 HST',
+ ko:{theme:'테마',theme_system:'시스템',theme_light:'라이트',theme_dark:'다크',rosterImport:'명단 가져오기',rosterImportTitle:'명단 표 가져오기',rosterImportHint:'팀 명단 표를 붙여넣으세요: “연출팀 (7)”처럼 인원수가 붙은 제목 아래에 한 줄에 한 명. 글머리 기호와 (A)/(B) 표시도 괜찮아요. 현재 명단은 대체돼요.',rosterImportGo:'명단 대체',rosterImportEmpty:'이름을 찾지 못했어요.',rosterConfirmReplace:'현재 명단을 이 표로 대체할까요?',rosterTitle:'팀 명단',rosterBtn:'명단에서',rosterEdit:'명단 편집',rosterDone:'사람 선택',rosterDescPick:'이름을 눌러 선택한 뒤 테이블에 추가하세요.',rosterDescEdit:'사람과 그룹을 추가/삭제하세요. 연결한 이메일과 송금 이름은 여기에 저장돼요.',rosterAddN:'{x} 추가',rosterSearch:'명단 검색…',rosterAddM:'멤버 추가…',rosterAddG:'새 그룹 이름…',rosterReset:'기본값으로 되돌리기',rosterConfirmReset:'명단을 기본 팀 목록으로 되돌릴까요? 수정한 내용은 사라져요.',rosterSelAll:'전체 선택',rosterClear:'선택 해제',confirmDelGroup:'이 그룹과 멤버를 삭제할까요?',kRoster:'팀 명단 열기',aRoster:'팀 명단',rosterAdded:'명단에서 {x} 추가됨',rosterNone:'일치하는 사람이 없어요.',title:'더치페이',sub:'테이블별로: 음식은 먹은 사람끼리 · 맥주는 마신 사람끼리 · 소주는 마신 사람끼리.',food:'음식',beer:'맥주',soju:'소주',foodS:'음',beerS:'맥',sojuS:'소',tax:'세금',tip:'팁 (세전)',hst:'13 HST',
   everyone:'전체:',addname:'사람 추가 — 이름 입력 후 Enter',add:'추가',paste:'이름 붙여넣기',addtable:'+ 테이블 추가',allTab:'전체',table:'테이블',breakdown:'전체',copy:'요약 복사',copyunpaid:'미납 목록 복사',newbill:'새 계산 (인원 유지)',clearall:'전체 초기화',
   qhint:'Enter로 다음 사람 추가 · 목록을 붙여넣으면 한 번에 추가',
   removeTable:'테이블 삭제',clearTable:'테이블 비우기',confirmTable:'이 테이블을 삭제할까요? 인원은 첫 번째 테이블로 이동해요.',confirmClearTable:'마지막 테이블이에요. 인원과 금액을 비울까요?',
@@ -885,6 +887,20 @@ document.querySelectorAll('dialog').forEach(d=>{
   d.addEventListener('click', e=>{ if(down && e.target===d && outside(e)) d.close(); down = false; });
 });
 
+// ---------- theme: system -> light -> dark
+const ICONS = {
+  system:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  dark:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>'
+};
+let THEME = 'system'; try{ THEME = localStorage.getItem('billsplit.theme') || 'system'; }catch{}
+function applyTheme(){
+  if(THEME==='system') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = THEME;
+  $('#themeBtn').innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[THEME]}</svg>`;
+  $('#themeBtn').title = t('theme')+': '+t('theme_'+THEME);
+}
+$('#themeBtn').onclick = ()=>{ THEME = {system:'light',light:'dark',dark:'system'}[THEME]; try{localStorage.setItem('billsplit.theme',THEME)}catch{} applyTheme(); toast(t('theme')+': '+t('theme_'+THEME)); };
+
 // ---------- global keys
 function toggleDense(){ UI.dense = !UI.dense; try{localStorage.setItem('billsplit.dense',UI.dense?'1':'0')}catch{} renderAll(); }
 $('#dense').onclick = toggleDense;
@@ -919,9 +935,9 @@ $('#clear').onclick = ()=>{
   if(!confirm(t('confirmClear'))) return;
   const keep = S.roster; S = blank(); S.roster = keep; UI.open.clear(); UI.view='all'; $('#in-tax').value=S.tax; $('#in-tip').value=S.tip; renderAll();
 };
-$('#lang').onclick = ()=>{ LANG = LANG==='ko'?'en':'ko'; try{localStorage.setItem('billsplit.lang',LANG)}catch{} applyLang(); renderAll();
+$('#lang').onclick = ()=>{ LANG = LANG==='ko'?'en':'ko'; try{localStorage.setItem('billsplit.lang',LANG)}catch{} applyLang(); applyTheme(); renderAll();
   if($('#dlg-match').open) renderMatches(); if($('#dlg-ob').open) renderOB(); if($('#dlg-keys').open) openKeys(); if($('#dlg-roster').open) renderRoster(); };
-applyLang(); renderAll();
+applyLang(); applyTheme(); renderAll();
 try{ if(!localStorage.getItem('billsplit.onboarded')) openOB(); }catch{}
 </script>
 </body>
