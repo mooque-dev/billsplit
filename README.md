@@ -32,9 +32,20 @@ Then visit http://localhost:5180.
 
 ## Team roster
 
-The repo ships with **sample names only**. Real rosters are never committed. In the app: **From roster → Edit roster → Import chart** and paste your team chart (headings like `연출팀 (7)` followed by one name per line; `(A)`/`(B)` tags are supported). It is stored only in that browser.
+The repo ships with **sample names only**; real names are never committed in plain text.
 
-Keep your real chart in `roster.local.txt` (git-ignored).
+**Load the real roster (team members):** open the roster (**From roster**) and use the **Unlock** box with the team password. It decrypts `roster.enc.json` in your browser and saves the roster in that browser only.
+
+**Or paste a chart:** **From roster → Edit roster → Import chart** (headings like `연출팀 (7)` followed by one name per line; `(A)`/`(B)` tags are supported).
+
+**Updating the encrypted roster (maintainers):** keep the plain chart in `roster.local.txt` (git-ignored), then:
+
+```bash
+node tools/encrypt-roster.mjs        # prompts for the password, writes roster.enc.json
+git add roster.enc.json && git commit -m "Update team roster" && git push
+```
+
+The encrypted file is public, so anyone can try passwords offline. Use a long passphrase (4+ random words). If the password leaks, treat the roster as exposed; changing the password doesn't remove old versions from git history.
 
 ## Contributing
 

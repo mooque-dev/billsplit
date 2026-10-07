@@ -191,6 +191,10 @@ h1{font-size:1.65rem;margin:.5rem 0 .15rem;letter-spacing:-.02em}
     <button class="toggle" id="rosterMode" data-i18n="rosterEdit"></button>
   </div>
   <p class="dialog-desc" id="rosterDesc"></p>
+  <form class="alert" id="rosterLock" hidden style="margin-bottom:.6rem">
+    <div id="lockText" style="margin-bottom:.5rem"></div>
+    <div style="display:flex;gap:.5rem"><input class="input input-sm" id="lockPw" type="password" autocomplete="off" data-i18n-ph="unlockPh" style="flex:1"><button class="btn btn-sm" type="submit" data-i18n="unlockBtn"></button></div>
+  </form>
   <input class="input" id="rosterQ" type="search" data-i18n-ph="rosterSearch" autocomplete="off" style="margin-bottom:.25rem">
   <div class="rbody" id="rosterBody"></div>
   <div class="dialog-footer" style="align-items:center">
@@ -250,7 +254,7 @@ const CATS = [['f','food'],['b','beer'],['s','soju']];
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent);
 const MOD = IS_MAC ? '⌘' : 'Ctrl', ALT = IS_MAC ? '⌥' : 'Alt';
 const I18N = {
- en:{theme:'Theme',theme_system:'System',theme_light:'Light',theme_dark:'Dark',rosterImport:'Import chart',rosterImportTitle:'Import roster chart',rosterImportHint:'Paste your team chart: a heading with a count like “Directing (7)”, then one name per line. Bullets and (A)/(B) cast tags are fine. This replaces the current roster.',rosterImportGo:'Replace roster',rosterImportEmpty:'No names found.',rosterConfirmReplace:'Replace the current roster with this chart?',rosterTitle:'Team roster',rosterBtn:'From roster',rosterEdit:'Edit roster',rosterDone:'Pick people',rosterDescPick:'Tap names to select, then add them to the table.',rosterDescEdit:'Add or remove people and groups. Emails and e-transfer names you link are remembered here.',rosterAddN:'Add {x}',rosterSearch:'Search roster…',rosterAddM:'Add member…',rosterAddG:'New group name…',rosterReset:'Reset to default',rosterConfirmReset:'Reset the roster to the default team list? Your edits will be lost.',rosterSelAll:'Select all',rosterClear:'Clear',confirmDelGroup:'Delete this group and its members?',kRoster:'Open team roster',aRoster:'Team roster',rosterAdded:'Added {x} from roster',rosterNone:'No one matches.',title:'Split the Bill',sub:'Per table: food by who ate · beer by beer drinkers · soju by soju drinkers.',food:'Food',beer:'Beer',soju:'Soju',foodS:'F',beerS:'B',sojuS:'S',tax:'Tax',tip:'Tip (pre-tax)',hst:'13 HST',
+ en:{unlockText:'🔒 Showing the sample roster. Enter the team password to load the real one.',unlockPh:'Team password',unlockBtn:'Unlock',unlockBad:'Wrong password',unlockDone:'Team roster unlocked',unlockErr:'Could not load the roster file',confirmUnlock:'Replace your edited roster with the team roster?',theme:'Theme',theme_system:'System',theme_light:'Light',theme_dark:'Dark',rosterImport:'Import chart',rosterImportTitle:'Import roster chart',rosterImportHint:'Paste your team chart: a heading with a count like “Directing (7)”, then one name per line. Bullets and (A)/(B) cast tags are fine. This replaces the current roster.',rosterImportGo:'Replace roster',rosterImportEmpty:'No names found.',rosterConfirmReplace:'Replace the current roster with this chart?',rosterTitle:'Team roster',rosterBtn:'From roster',rosterEdit:'Edit roster',rosterDone:'Pick people',rosterDescPick:'Tap names to select, then add them to the table.',rosterDescEdit:'Add or remove people and groups. Emails and e-transfer names you link are remembered here.',rosterAddN:'Add {x}',rosterSearch:'Search roster…',rosterAddM:'Add member…',rosterAddG:'New group name…',rosterReset:'Reset to default',rosterConfirmReset:'Reset the roster to the default team list? Your edits will be lost.',rosterSelAll:'Select all',rosterClear:'Clear',confirmDelGroup:'Delete this group and its members?',kRoster:'Open team roster',aRoster:'Team roster',rosterAdded:'Added {x} from roster',rosterNone:'No one matches.',title:'Split the Bill',sub:'Per table: food by who ate · beer by beer drinkers · soju by soju drinkers.',food:'Food',beer:'Beer',soju:'Soju',foodS:'F',beerS:'B',sojuS:'S',tax:'Tax',tip:'Tip (pre-tax)',hst:'13 HST',
   everyone:'Everyone:',addname:'Add person — type a name, press Enter',add:'Add',paste:'Paste names',addtable:'+ Add table',allTab:'All',table:'Table',breakdown:'Overall',copy:'Copy summary',copyunpaid:'Copy unpaid list',newbill:'New bill (keep people)',clearall:'Clear everything',
   qhint:'Press Enter to add the next person · paste a list to add many',
   removeTable:'Remove table',clearTable:'Clear table',confirmTable:'Remove this table? Its people move to the first table.',confirmClearTable:'This is the last table. Clear its people and amounts?',
@@ -272,7 +276,7 @@ const I18N = {
   ob3t:'Mark who paid',ob3:'Tap the <b>circle</b> next to a name when they pay. The bottom bar tracks collected vs left. Filter by <b>Unpaid</b>, switch to <b>Compact</b> for one-line rows, and use <b>Copy unpaid list</b> for reminders.',
   ob4t:'Match e-transfers',ob4:'Tap <b>Match payments</b> and paste sender names/emails with amounts. It links them to people and can <b>remember</b> odd spellings. Add emails and other names under a person\'s <b>Details</b>.',
   ob5t:'Keyboard friendly',ob5:'Press <span class="kbd">?</span> any time for all shortcuts. Highlights: <span class="kbd">{mod}</span><span class="kbd">K</span> find a person, <span class="kbd">↑</span><span class="kbd">↓</span><span class="kbd">Enter</span> move between names, <span class="kbd">{alt}</span><span class="kbd">F</span>/<span class="kbd">B</span>/<span class="kbd">S</span> toggle items, <span class="kbd">{alt}</span><span class="kbd">P</span> mark paid.'},
- ko:{theme:'테마',theme_system:'시스템',theme_light:'라이트',theme_dark:'다크',rosterImport:'명단 가져오기',rosterImportTitle:'명단 표 가져오기',rosterImportHint:'팀 명단 표를 붙여넣으세요: “연출팀 (7)”처럼 인원수가 붙은 제목 아래에 한 줄에 한 명. 글머리 기호와 (A)/(B) 표시도 괜찮아요. 현재 명단은 대체돼요.',rosterImportGo:'명단 대체',rosterImportEmpty:'이름을 찾지 못했어요.',rosterConfirmReplace:'현재 명단을 이 표로 대체할까요?',rosterTitle:'팀 명단',rosterBtn:'명단에서',rosterEdit:'명단 편집',rosterDone:'사람 선택',rosterDescPick:'이름을 눌러 선택한 뒤 테이블에 추가하세요.',rosterDescEdit:'사람과 그룹을 추가/삭제하세요. 연결한 이메일과 송금 이름은 여기에 저장돼요.',rosterAddN:'{x} 추가',rosterSearch:'명단 검색…',rosterAddM:'멤버 추가…',rosterAddG:'새 그룹 이름…',rosterReset:'기본값으로 되돌리기',rosterConfirmReset:'명단을 기본 팀 목록으로 되돌릴까요? 수정한 내용은 사라져요.',rosterSelAll:'전체 선택',rosterClear:'선택 해제',confirmDelGroup:'이 그룹과 멤버를 삭제할까요?',kRoster:'팀 명단 열기',aRoster:'팀 명단',rosterAdded:'명단에서 {x} 추가됨',rosterNone:'일치하는 사람이 없어요.',title:'더치페이',sub:'테이블별로: 음식은 먹은 사람끼리 · 맥주는 마신 사람끼리 · 소주는 마신 사람끼리.',food:'음식',beer:'맥주',soju:'소주',foodS:'음',beerS:'맥',sojuS:'소',tax:'세금',tip:'팁 (세전)',hst:'13 HST',
+ ko:{unlockText:'🔒 지금은 샘플 명단이에요. 팀 비밀번호를 입력하면 실제 명단을 불러와요.',unlockPh:'팀 비밀번호',unlockBtn:'잠금 해제',unlockBad:'비밀번호가 틀렸어요',unlockDone:'팀 명단을 불러왔어요',unlockErr:'명단 파일을 불러오지 못했어요',confirmUnlock:'수정한 명단을 팀 명단으로 대체할까요?',theme:'테마',theme_system:'시스템',theme_light:'라이트',theme_dark:'다크',rosterImport:'명단 가져오기',rosterImportTitle:'명단 표 가져오기',rosterImportHint:'팀 명단 표를 붙여넣으세요: “연출팀 (7)”처럼 인원수가 붙은 제목 아래에 한 줄에 한 명. 글머리 기호와 (A)/(B) 표시도 괜찮아요. 현재 명단은 대체돼요.',rosterImportGo:'명단 대체',rosterImportEmpty:'이름을 찾지 못했어요.',rosterConfirmReplace:'현재 명단을 이 표로 대체할까요?',rosterTitle:'팀 명단',rosterBtn:'명단에서',rosterEdit:'명단 편집',rosterDone:'사람 선택',rosterDescPick:'이름을 눌러 선택한 뒤 테이블에 추가하세요.',rosterDescEdit:'사람과 그룹을 추가/삭제하세요. 연결한 이메일과 송금 이름은 여기에 저장돼요.',rosterAddN:'{x} 추가',rosterSearch:'명단 검색…',rosterAddM:'멤버 추가…',rosterAddG:'새 그룹 이름…',rosterReset:'기본값으로 되돌리기',rosterConfirmReset:'명단을 기본 팀 목록으로 되돌릴까요? 수정한 내용은 사라져요.',rosterSelAll:'전체 선택',rosterClear:'선택 해제',confirmDelGroup:'이 그룹과 멤버를 삭제할까요?',kRoster:'팀 명단 열기',aRoster:'팀 명단',rosterAdded:'명단에서 {x} 추가됨',rosterNone:'일치하는 사람이 없어요.',title:'더치페이',sub:'테이블별로: 음식은 먹은 사람끼리 · 맥주는 마신 사람끼리 · 소주는 마신 사람끼리.',food:'음식',beer:'맥주',soju:'소주',foodS:'음',beerS:'맥',sojuS:'소',tax:'세금',tip:'팁 (세전)',hst:'13 HST',
   everyone:'전체:',addname:'사람 추가 — 이름 입력 후 Enter',add:'추가',paste:'이름 붙여넣기',addtable:'+ 테이블 추가',allTab:'전체',table:'테이블',breakdown:'전체',copy:'요약 복사',copyunpaid:'미납 목록 복사',newbill:'새 계산 (인원 유지)',clearall:'전체 초기화',
   qhint:'Enter로 다음 사람 추가 · 목록을 붙여넣으면 한 번에 추가',
   removeTable:'테이블 삭제',clearTable:'테이블 비우기',confirmTable:'이 테이블을 삭제할까요? 인원은 첫 번째 테이블로 이동해요.',confirmClearTable:'마지막 테이블이에요. 인원과 금액을 비울까요?',
@@ -735,8 +739,32 @@ $('#rosterImport').onclick = ()=>{ $('#rimpTxt').value=''; $('#dlg-rimport').sho
 $('#rimpGo').onclick = ()=>{
   const g = parseChart($('#rimpTxt').value); if(!g.length){ toast(t('rosterImportEmpty')); return; }
   if(allMembers().length && !confirm(t('rosterConfirmReplace'))) return;
-  S.roster = {groups:g}; $('#dlg-rimport').close(); renderRoster(); renderAll(); toast(t('rosterAdded', allMembers().length+(LANG==='ko'?'명':'')));
+  S.roster = {groups:g}; S.rosterCustom = true; $('#dlg-rimport').close(); renderRoster(); renderAll(); toast(t('rosterAdded', allMembers().length+(LANG==='ko'?'명':'')));
 };
+
+// ---------- unlock encrypted team roster (roster.enc.json, AES-GCM + PBKDF2)
+let ENC_OK = null;
+async function encAvailable(){
+  if(ENC_OK!==null) return ENC_OK;
+  try{ ENC_OK = (await fetch('roster.enc.json',{method:'HEAD',cache:'no-cache'})).ok; }catch{ ENC_OK = false; }
+  return ENC_OK;
+}
+async function decryptRoster(pw){
+  const j = await fetch('roster.enc.json',{cache:'no-cache'}).then(r=>{ if(!r.ok) throw new Error('fetch'); return r.json(); });
+  const b = x => Uint8Array.from(atob(x), ch=>ch.charCodeAt(0));
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name:'PBKDF2',salt:b(j.salt),iterations:j.iter,hash:'SHA-256'}, base, {name:'AES-GCM',length:256}, false, ['decrypt']);
+  return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b(j.iv)}, key, b(j.data)));
+}
+$('#rosterLock').addEventListener('submit', async e=>{
+  e.preventDefault(); const pw = $('#lockPw').value; if(!pw) return;
+  let text;
+  try{ text = await decryptRoster(pw); }
+  catch(err){ toast(t(err && err.message==='fetch' ? 'unlockErr' : 'unlockBad')); $('#lockPw').select(); return; }
+  const g = parseChart(text); if(!g.length){ toast(t('rosterImportEmpty')); return; }
+  if(S.rosterCustom && !confirm(t('confirmUnlock'))) return;
+  S.roster = {groups:g}; S.rosterCustom = true; $('#lockPw').value=''; renderRoster(); renderAll(); toast(t('unlockDone'));
+});
 
 // ---------- roster dialog
 const RS = {mode:'pick',sel:new Set(),tid:null,q:''};
@@ -767,6 +795,7 @@ function renderRoster(){
   if(edit) h += `<div class="rhead" style="margin-top:1.2rem"><input class="input input-sm" style="max-width:260px" data-gnew placeholder="${esc(t('rosterAddG'))}" autocomplete="off"></div>`;
   else if(!h) h = `<div class="muted" style="padding:1rem 0;font-size:.9rem">${t('rosterNone')}</div>`;
   $b.innerHTML = h; $b.scrollTop = scroll;
+  $('#rosterLock').hidden = edit || !ENC_OK || !!S.rosterCustom; $('#lockText').textContent = t('unlockText');
   $('#rosterAdd').hidden = edit; $('#rosterReset').hidden = !edit; $('#rosterImport').hidden = !edit;
   $('#rosterAdd').textContent = t('rosterAddN', RS.sel.size + (LANG==='ko'?'명':'')); $('#rosterAdd').disabled = !RS.sel.size;
   $('#rosterCancel').textContent = edit ? t('done') : t('cancel');
@@ -774,11 +803,13 @@ function renderRoster(){
 function openRoster(tid){
   RS.mode='pick'; RS.sel.clear(); RS.q=''; RS.tid = tid || (UI.view!=='all' ? UI.view : S.tables[0].id);
   $('#rosterQ').value=''; renderRoster(); if(!$('#dlg-roster').open) $('#dlg-roster').showModal(); $('#rosterQ').focus();
+  encAvailable().then(ok=>{ if(ok) renderRoster(); });
 }
 $('#rosterQ').addEventListener('input', e=>{ RS.q=e.target.value; renderRoster(); });
 $('#rosterMode').onclick = ()=>{ RS.mode = RS.mode==='edit'?'pick':'edit'; renderRoster(); };
 $('#rosterTarget').onchange = e=>{ RS.tid = e.target.value; };
 $('#rosterBody').addEventListener('click', e=>{
+  if(RS.mode==='edit') S.rosterCustom = true;
   const b = e.target.closest('button,[data-rename]'); if(!b) return; const d = b.dataset;
   if(d.mid){ RS.sel.has(d.mid) ? RS.sel.delete(d.mid) : RS.sel.add(d.mid); renderRoster(); }
   else if(d.rsel){ const g = S.roster.groups.find(x=>x.id===d.rsel), present = presentNames(), q = RS.q.trim().toLowerCase();
@@ -789,12 +820,12 @@ $('#rosterBody').addEventListener('click', e=>{
   else if(d.rename){ const m = findMember(d.rename), n = prompt('', m.name); if(n && n.trim()){ m.name = n.trim(); renderRoster(); renderAll(); } }
 });
 $('#rosterBody').addEventListener('keydown', e=>{
-  if(e.key!=='Enter') return; const el = e.target, v = el.value.trim(); if(!v) return;
+  if(e.key!=='Enter') return; S.rosterCustom = true; const el = e.target, v = el.value.trim(); if(!v) return;
   if(el.dataset.gadd){ const g = S.roster.groups.find(x=>x.id===el.dataset.gadd); g.members.push({id:uid(),name:v,alias:'',email:'',tag:''}); renderRoster(); renderAll(); const n = $(`[data-gadd="${g.id}"]`); if(n) n.focus(); }
   else if('gnew' in el.dataset){ S.roster.groups.push({id:uid(),name:v,members:[]}); renderRoster(); renderAll(); const n = $('[data-gadd]:last-of-type'); [...document.querySelectorAll('[data-gadd]')].pop()?.focus(); }
 });
 $('#rosterBody').addEventListener('change', e=>{ if(e.target.dataset.gname){ const g = S.roster.groups.find(x=>x.id===e.target.dataset.gname); g.name = e.target.value.trim() || g.name; save(); } });
-$('#rosterReset').onclick = ()=>{ if(confirm(t('rosterConfirmReset'))){ S.roster = defaultRoster(); renderRoster(); renderAll(); } };
+$('#rosterReset').onclick = ()=>{ if(confirm(t('rosterConfirmReset'))){ S.roster = defaultRoster(); S.rosterCustom = false; renderRoster(); renderAll(); } };
 $('#rosterAdd').onclick = ()=>{
   const present = presentNames(), seen = new Set(), picked = [];
   allMembers().forEach(m=>{ const k = nn(m.name); if(RS.sel.has(m.id) && !present.has(k) && !seen.has(k)){ seen.add(k); picked.push(m); } });
